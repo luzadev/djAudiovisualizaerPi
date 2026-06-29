@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<svg xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:svg="http://www.w3.org/2000/svg" id="svg1" viewBox="0 0 153.91 104.01" version="1.0">
+  <g id="layer1" fill-rule="evenodd" stroke="#000" transform="translate(-3.4862 -14.28)" stroke-dashoffset="11.7">
+    <rect id="rect2158" opacity=".20217" rx="8.8425" ry="6.0491" height="97.701" width="146.34" y="19.795" x="10.26" stroke-width="1.5791"/>
+    <rect id="rect2810" rx="8.8425" ry="6.0491" height="97.701" width="146.34" y="15.069" x="4.2757" stroke-width="1.5791" fill="#8d958a"/>
+    <rect id="rect2812" rx="8.8425" ry="10.148" height="53.607" width="127.7" y="25.173" x="14.218" stroke-width="1.5242" fill="#e8f3e4"/>
+    <path id="rect2910" stroke-width=".25295" d="m38.84 91.185l-6.559 6.375 6.559 6.37v-12.745z"/>
+    <path id="path2917" stroke-width=".25295" d="m117.6 103.93l6.56-6.37-6.56-6.375v12.745z"/>
+    <rect id="rect2919" rx=".12266" ry=".1191" height="12.387" width="11.285" y="91.418" x="94.336" stroke-width=".72608"/>
+    <g id="g2939" stroke-width="1.7693" transform="matrix(.24531 0 0 .23820 -113.44 121.51)">
+      <rect id="rect2921" rx=".17349" ry=".5" height="52" width="15.961" y="-126.95" x="741.13"/>
+      <rect id="rect2927" rx=".17349" ry=".5" height="52" width="15.961" y="-126.95" x="771.57"/>
+    </g>
+    <rect id="rect2937" rx=".042561" ry=".1191" height="12.387" width="3.9156" y="91.271" x="124.76" stroke-width=".4277"/>
+    <rect id="rect2943" rx=".042561" ry=".1191" height="12.387" width="3.9156" y="91.271" x="27.977" stroke-width=".4277"/>
+    <path id="path2945" stroke-width=".39554" d="m46.231 104l16.039-6.37-16.039-6.374v12.744z"/>
+  </g>
+  <metadata>
+    <rdf:RDF>
+      <cc:Work>
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+        <cc:license rdf:resource="http://creativecommons.org/licenses/publicdomain/"/>
+        <dc:publisher>
+          <cc:Agent rdf:about="http://openclipart.org/">
+            <dc:title>Openclipart</dc:title>
+          </cc:Agent>
+        </dc:publisher>
+        <dc:title>Zinf</dc:title>
+        <dc:date>2008-02-09T14:43:17</dc:date>
+        <dc:description>audio player, audio player, clip art, clipart, image, interface, interface, media, music, music, png, public domain, sound, sound, svg, zinf, zinf, </dc:description>
+        <dc:source>http://openclipart.org/detail/13338/zinf-by-anonymous</dc:source>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Anonymous</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>audio player</rdf:li>
+            <rdf:li>clip art</rdf:li>
+            <rdf:li>clipart</rdf:li>
+            <rdf:li>image</rdf:li>
+            <rdf:li>interface</rdf:li>
+            <rdf:li>media</rdf:li>
+            <rdf:li>music</rdf:li>
+            <rdf:li>png</rdf:li>
+            <rdf:li>public domain</rdf:li>
+            <rdf:li>sound</rdf:li>
+            <rdf:li>svg</rdf:li>
+            <rdf:li>zinf</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+      <cc:License rdf:about="http://creativecommons.org/licenses/publicdomain/">
+        <cc:permits rdf:resource="http://creativecommons.org/ns#Reproduction"/>
+        <cc:permits rdf:resource="http://creativecommons.org/ns#Distribution"/>
+        <cc:permits rdf:resource="http://creativecommons.org/ns#DerivativeWorks"/>
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+</svg>

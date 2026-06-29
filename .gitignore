@@ -1,0 +1,8 @@
+node_modules/
+recordings/
+media/*
+!media/.gitkeep
+state/*.json
+public/icons/*.png
+.DS_Store
+npm-debug.log

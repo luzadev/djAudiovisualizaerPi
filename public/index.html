@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/mobile.css" />
+  <title>DJ Visualizer — Remote</title>
+</head>
+<body>
+  <header id="bar">
+    <strong>🎛 DJ Visualizer</strong>
+    <span id="conn" class="off">offline</span>
+    <span id="now">—</span>
+  </header>
+
+  <main>
+    <!-- EFFETTI -->
+    <section class="panel" data-tab="fx">
+      <div class="row">
+        <select id="fx-fam"><option value="-1">Tutte le famiglie</option></select>
+        <input id="fx-search" placeholder="Cerca effetto…" />
+      </div>
+      <div id="fx-list" class="list"></div>
+      <label class="lbl">Sagome SVG</label>
+      <select id="svg-sel"><option value="">— scegli una sagoma —</option></select>
+    </section>
+
+    <!-- MEDIA / PLAYLIST -->
+    <section class="panel hidden" data-tab="media">
+      <div class="row">
+        <button id="media-refresh">↻ Aggiorna</button>
+        <button id="media-upload-btn">⬆️ Carica file</button>
+        <input id="media-upload" type="file" accept="audio/*,video/*" multiple hidden />
+      </div>
+      <div id="nowbar" class="nowbar hidden">
+        <div class="np-top"><span id="np-name">—</span><span id="np-time">0:00 / 0:00</span></div>
+        <input id="seek" type="range" min="0" max="1000" value="0" />
+        <div class="row">
+          <button id="np-prev">⏮</button>
+          <button id="np-play">⏸</button>
+          <button id="np-next">⏭</button>
+        </div>
+      </div>
+      <label class="lbl">Coda <span id="queue-count">0</span></label>
+      <div id="queue" class="list"></div>
+      <label class="lbl">Libreria sul dispositivo</label>
+      <div id="lib" class="list"></div>
+    </section>
+
+    <!-- TESTO -->
+    <section class="panel hidden" data-tab="text">
+      <textarea id="tk-text" placeholder="Testo scorrevole…"></textarea>
+      <div class="row">
+        <label class="chk"><input id="tk-on" type="checkbox" /> Mostra</label>
+        <select id="tk-dir">
+          <option value="h">➡️ Orizzontale</option>
+          <option value="vup">⬆️ Verticale su</option>
+          <option value="vdown">⬇️ Verticale giù</option>
+          <option value="sides">↕️ Bordi laterali</option>
+        </select>
+      </div>
+      <div class="row">
+        <select id="tk-pos"><option value="bottom">Basso</option><option value="top">Alto</option><option value="middle">Centro</option></select>
+        <select id="tk-fx"><option value="none">Nessuno</option><option value="updown">Su-giù</option><option value="wave">Onda</option><option value="zoom">Zoom</option><option value="flash">Flash</option><option value="rotate">Rotazione</option></select>
+      </div>
+      <label class="lbl">Grandezza <span id="tk-size-v">6</span></label>
+      <input id="tk-size" type="range" min="2" max="18" step="0.5" value="6" />
+      <label class="lbl">Velocità <span id="tk-speed-v">1.0×</span></label>
+      <input id="tk-speed" type="range" min="0.2" max="4" step="0.1" value="1" />
+      <div class="row">
+        <label class="chk"><input id="tk-bold" type="checkbox" checked /> Grassetto</label>
+        <label class="chk">Colore <input id="tk-color" type="color" value="#ffffff" /></label>
+      </div>
+    </section>
+
+    <!-- PAD -->
+    <section class="panel hidden" data-tab="pad">
+      <div class="hint">Tieni premuto un pad per assegnargli un brano dalla libreria.</div>
+      <div id="pads" class="pad-grid"></div>
+    </section>
+
+    <!-- AUDIO -->
+    <section class="panel hidden" data-tab="audio">
+      <label class="lbl">Reattività <span id="gain-v">1.0×</span></label>
+      <input id="gain" type="range" min="0" max="3" step="0.05" value="1" />
+      <label class="lbl">Velocità <span id="speed-v">1.0×</span></label>
+      <input id="speed" type="range" min="0" max="3" step="0.05" value="1" />
+      <label class="lbl band b">Bassi <span id="bass-v">1.0×</span></label>
+      <input id="bass" type="range" min="0" max="3" step="0.05" value="1" />
+      <label class="lbl band m">Medi <span id="mid-v">1.0×</span></label>
+      <input id="mid" type="range" min="0" max="3" step="0.05" value="1" />
+      <label class="lbl band t">Alti <span id="treble-v">1.0×</span></label>
+      <input id="treble" type="range" min="0" max="3" step="0.05" value="1" />
+      <div class="meters">
+        <div class="meter"><span>BASS</span><i id="m-bass"></i></div>
+        <div class="meter"><span>MID</span><i id="m-mid"></i></div>
+        <div class="meter"><span>HIGH</span><i id="m-treble"></i></div>
+      </div>
+    </section>
+
+    <!-- OUTPUT / REC -->
+    <section class="panel hidden" data-tab="out">
+      <button id="fs" class="wide">🖥 Output a tutto schermo</button>
+      <label class="lbl">Formato registrazione</label>
+      <select id="rec-fmt">
+        <option value="1920x1080">16:9 (1920×1080)</option>
+        <option value="1080x1920">9:16 (1080×1920)</option>
+        <option value="1080x1080">1:1 (1080×1080)</option>
+        <option value="1440x1080">4:3 (1440×1080)</option>
+      </select>
+      <button id="rec" class="wide">🔴 Avvia registrazione</button>
+      <div id="rec-status" class="hint"></div>
+    </section>
+  </main>
+
+  <nav id="tabs">
+    <button data-tab="fx" class="active">🌀<small>Effetti</small></button>
+    <button data-tab="media">🎵<small>Media</small></button>
+    <button data-tab="text">🔤<small>Testo</small></button>
+    <button data-tab="pad">🎹<small>Pad</small></button>
+    <button data-tab="audio">🎚<small>Audio</small></button>
+    <button data-tab="out">🖥<small>Out</small></button>
+  </nav>
+
+  <script>window.DJV_ROLE = 'control';</script>
+  <script src="js/net.js"></script>
+  <script src="js/engine/shaders.js"></script>
+  <script src="js/engine/effects.js"></script>
+  <script src="js/control.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>

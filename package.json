@@ -1,0 +1,16 @@
+{
+  "name": "dj-visualizer-pi",
+  "version": "0.1.0",
+  "description": "Standalone audio-reactive visualizer for Raspberry Pi 5, controlled from a mobile web app (PWA).",
+  "author": "Dj LuZa",
+  "license": "MIT",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.0.1",
+    "ws": "^8.18.0"
+  }
+}

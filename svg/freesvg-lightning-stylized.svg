@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 937.08 1689.72" enable-background="new 0 0 937.08 1689.72" xml:space="preserve">
+<g>
+	<polygon opacity="0.5" fill="#B0BD01" stroke="#000000" stroke-width="3.8095" stroke-miterlimit="10" points="632.939,180.872 
+		298.971,851.348 500.875,749.761 	"/>
+	<path opacity="0.5" fill="#E8D800" stroke="#000000" stroke-width="3.8095" stroke-miterlimit="10" d="M879.288,719.284H533.892
+		L698.971,44.999L57.701,997.38h337.778L227.86,1644.999L879.288,719.284z M298.971,851.348L123.733,961.824l509.207-780.952
+		L500.875,749.761l308.571,3.81l-516.825,783.492l137.143-584.127l171.429-91.429L298.971,851.348z"/>
+	<polygon opacity="0.5" fill="#FFFEF3" stroke="#000000" stroke-width="3.8095" stroke-miterlimit="10" points="123.733,961.824 
+		298.971,851.348 632.939,180.872 	"/>
+	
+		<line fill="none" stroke="#000000" stroke-width="3.8095" stroke-miterlimit="10" x1="500.875" y1="749.761" x2="632.939" y2="180.872"/>
+	<polygon opacity="0.5" fill="#FBFFC2" stroke="#000000" stroke-width="3.8095" stroke-miterlimit="10" points="500.875,749.761 
+		298.971,851.348 601.193,861.507 809.447,753.57 	"/>
+	<polygon opacity="0.5" fill="#FBFFC2" stroke="#000000" stroke-width="3.8095" stroke-miterlimit="10" points="292.622,1537.062 
+		601.193,861.507 429.764,952.935 	"/>
+	<polygon opacity="0.5" fill="#B0BD01" stroke="#000000" stroke-width="3.8095" stroke-miterlimit="10" points="809.447,753.57 
+		601.193,861.507 292.622,1537.062 	"/>
+</g>
+</svg>

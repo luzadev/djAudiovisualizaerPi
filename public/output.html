@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DJ Visualizer — Output</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="output">
+  <canvas id="gl"></canvas>
+
+  <video id="bg-video" class="bg-video" loop muted playsinline></video>
+  <video id="track-video" class="track-video" playsinline></video>
+  <div id="overlay-images"></div>
+  <img id="scene-image" class="scene-image" />
+  <img id="logo-0" class="logo" />
+  <img id="logo-1" class="logo" />
+
+  <div id="ticker"><div id="ticker-track"><span class="tick-copy"></span><span class="tick-copy"></span></div></div>
+  <div id="side-text">
+    <div class="side-col left"><div class="side-track"><span class="side-copy"></span><span class="side-copy"></span></div></div>
+    <div class="side-col right"><div class="side-track"><span class="side-copy"></span><span class="side-copy"></span></div></div>
+  </div>
+
+  <div id="drop-hint">
+    <div class="big">🎛 In attesa dell'audio…</div>
+    <div class="small">Controlla dal telefono · apri questa pagina a tutto schermo</div>
+  </div>
+
+  <script>window.DJV_ROLE = 'output';</script>
+  <script src="js/net.js"></script>
+  <script src="js/engine/shaders.js"></script>
+  <script src="js/engine/effects.js"></script>
+  <script src="js/engine/visualizer.js"></script>
+  <script src="js/engine/audio.js"></script>
+  <script src="js/output.js"></script>
+  <!-- Tap anywhere to enter fullscreen & unlock audio (browser autoplay policy). -->
+  <script>
+    addEventListener('click', () => {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    }, { once: true });
+    djv.onControl((m) => {
+      if (m && m.type === 'outputFullscreen') {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+        else if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      }
+    });
+  </script>
+</body>
+</html>
