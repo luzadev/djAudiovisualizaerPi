@@ -60,6 +60,87 @@ $('#svg-sel').addEventListener('change', (e) => {
 
 // ---- Media / Playlist ------------------------------------------------------
 let library = [], queue = [], qIndex = -1, playing = false, curDur = 0, curCur = 0;
+const durCache = {};       // url -> seconds
+const wavePeaks = {};      // file(base) -> peaks[] | 'loading' | null
+const WAVE_BUCKETS = 400;
+let openDetail = -1;       // queue index whose trim/waveform panel is open
+let gapTimer = null;
+const baseName = (u) => decodeURIComponent((u || '').split('/').pop());
+
+function probeDur(url) { if (url && !(url in durCache)) send({ type: 'probeDurations', paths: [url] }); }
+function ensureWave(it) {
+  const file = baseName(it.url);
+  if (!file || wavePeaks[file]) return;
+  wavePeaks[file] = 'loading';
+  djv.peaks(file, WAVE_BUCKETS).then((res) => {
+    const peaks = Array.isArray(res) ? res : (res && res.peaks);
+    wavePeaks[file] = (peaks && peaks.length) ? peaks : null;
+    if (res && res.duration && !(it.url in durCache)) durCache[it.url] = res.duration; // exact duration from the server
+    renderQueue();
+  }).catch(() => { wavePeaks[file] = null; });
+}
+function drawWave(canvas, it, isCur) {
+  const peaks = wavePeaks[baseName(it.url)];
+  const ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height, mid = h / 2;
+  ctx.clearRect(0, 0, w, h);
+  if (!Array.isArray(peaks)) { ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(0, mid - 1, w, 2); return; }
+  const dur = durCache[it.url] || (isCur ? curDur : 0);
+  const s = it.start || 0, e = it.end > 0 ? it.end : dur;
+  const sx = dur > 0 ? s / dur * w : 0, ex = dur > 0 ? e / dur * w : w, N = peaks.length;
+  for (let x = 0; x < w; x++) {
+    const bar = Math.max(1, peaks[Math.min(N - 1, Math.floor(x / w * N))] * h * 0.46);
+    ctx.fillStyle = (x >= sx && x <= ex) ? 'rgba(140,182,255,.9)' : 'rgba(140,182,255,.2)';
+    ctx.fillRect(x, mid - bar, 1, bar * 2);
+  }
+  if (dur > 0) { ctx.fillStyle = '#6ee7a0'; ctx.fillRect(sx, 0, 2, h); ctx.fillStyle = '#ff9a9a'; ctx.fillRect(ex - 2, 0, 2, h); }
+  if (isCur && curDur > 0) { ctx.fillStyle = '#fff'; ctx.fillRect(Math.min(w, curCur / curDur * w), 0, 1.5, h); }
+}
+// Pointer on the waveform: grab a trim handle if near one, else seek/scrub.
+function wireWave(canvas, it, i) {
+  const HANDLE = 12; let mode = null;
+  const dur = () => durCache[it.url] || (i === qIndex ? curDur : 0) || 0;
+  const tAt = (e) => { const r = canvas.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * dur(); };
+  const refreshLabels = () => { const d = canvas.parentNode; d.querySelector('.t-in').textContent = fmt(it.start || 0); d.querySelector('.t-out').textContent = it.end > 0 ? fmt(it.end) : 'fine'; };
+  canvas.addEventListener('pointerdown', (e) => {
+    const d = dur(), r = canvas.getBoundingClientRect(), x = e.clientX - r.left;
+    const sx = d ? (it.start || 0) / d * r.width : 0, ex = d ? (it.end > 0 ? it.end : d) / d * r.width : r.width;
+    if (d && Math.abs(x - sx) <= HANDLE) mode = 'start'; else if (d && Math.abs(x - ex) <= HANDLE) mode = 'end'; else mode = 'seek';
+    canvas.setPointerCapture(e.pointerId); e.preventDefault();
+    if (mode === 'seek' && i === qIndex) { curCur = tAt(e); send({ type: 'seek', time: curCur }); drawWave(canvas, it, true); }
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!mode) return; const t = tAt(e);
+    if (mode === 'start') { it.start = Math.max(0, Math.min(t, (it.end > 0 ? it.end : dur()) - 0.5)); }
+    else if (mode === 'end') { it.end = Math.min(dur(), Math.max(t, (it.start || 0) + 0.5)); }
+    else { if (i === qIndex) { curCur = t; send({ type: 'seek', time: t }); drawWave(canvas, it, true); } return; }
+    drawWave(canvas, it, i === qIndex); refreshLabels();
+  });
+  const end = (e) => {
+    if (!mode) return;
+    if (mode !== 'seek') { if (i === qIndex) send({ type: 'setTrim', start: it.start || 0, end: it.end || 0 }); }
+    else if (i !== qIndex) playAt(i, tAt(e));
+    mode = null;
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', () => { mode = null; });
+}
+function clearGap() { if (gapTimer) { clearTimeout(gapTimer); gapTimer = null; } }
+function advanceQueue() { if (qIndex + 1 < queue.length) playAt(qIndex + 1); else { playing = false; $('#np-play').textContent = '▶'; } }
+function afterTrackEnd() {
+  const it = queue[qIndex];
+  if (it && it.gap > 0) gapTimer = setTimeout(() => { gapTimer = null; advanceQueue(); }, it.gap * 1000);
+  else advanceQueue();
+}
+function updateOpenDetail() {
+  if (openDetail !== qIndex || qIndex < 0) return;
+  const card = document.querySelectorAll('#queue .qcard')[qIndex]; if (!card) return;
+  const det = card.querySelector('.qdetail'); if (!det) return;
+  const it = queue[qIndex], canvas = det.querySelector('.wave'); if (canvas) drawWave(canvas, it, true);
+  const tot = Math.max(0, (it.end > 0 ? it.end : (durCache[it.url] || curDur)) - (it.start || 0));
+  const el = Math.max(0, curCur - (it.start || 0));
+  det.querySelector('.tt-el').textContent = '▶ ' + fmt(el);
+  det.querySelector('.tt-rem').textContent = '⧗ -' + fmt(Math.max(0, tot - el));
+}
 function loadLibrary() { djv.listMedia().then((items) => { library = items; renderLib(); }); }
 function mediaIcon(k) { return k === 'video' ? '🎞 ' : (k === 'image' ? '🖼 ' : '🎵 '); }
 function renderLib() {
@@ -83,19 +164,55 @@ function renderQueue() {
   $('#queue-count').textContent = queue.length;
   const el = $('#queue'); el.innerHTML = '';
   queue.forEach((it, i) => {
-    const d = document.createElement('div'); d.className = 'item' + (i === qIndex ? ' active' : '');
-    d.innerHTML = '<span>' + mediaIcon(it.kind) + it.name + '</span>';
+    const card = document.createElement('div'); card.className = 'qcard' + (i === qIndex ? ' active' : '');
+    const head = document.createElement('div'); head.className = 'item';
+    head.innerHTML = '<span>' + mediaIcon(it.kind) + it.name + '</span>';
+    head.addEventListener('click', () => playAt(i));
+    if (it.kind !== 'image') {
+      const cog = document.createElement('button'); cog.textContent = '⚙'; cog.title = 'Trim / forma d\'onda';
+      cog.addEventListener('click', (ev) => { ev.stopPropagation(); openDetail = openDetail === i ? -1 : i; renderQueue(); });
+      head.appendChild(cog);
+    }
     const del = document.createElement('button'); del.textContent = '✕';
-    del.addEventListener('click', (ev) => { ev.stopPropagation(); queue.splice(i, 1); if (i < qIndex) qIndex--; renderQueue(); });
-    d.appendChild(del);
-    d.addEventListener('click', () => playAt(i));
-    el.appendChild(d);
+    del.addEventListener('click', (ev) => { ev.stopPropagation(); queue.splice(i, 1); if (i < qIndex) qIndex--; if (openDetail === i) openDetail = -1; renderQueue(); });
+    head.appendChild(del);
+    card.appendChild(head);
+
+    if (openDetail === i && it.kind !== 'image') {
+      probeDur(it.url); ensureWave(it);
+      const dur = durCache[it.url] || (i === qIndex ? curDur : 0);
+      const elp = i === qIndex ? Math.max(0, curCur - (it.start || 0)) : 0;
+      const tot = Math.max(0, (it.end > 0 ? it.end : dur) - (it.start || 0));
+      const det = document.createElement('div'); det.className = 'qdetail';
+      det.innerHTML =
+        '<div class="qtimes"><span class="tt-el">▶ ' + fmt(elp) + '</span>' +
+        '<span class="tt-tot">⏱ ' + fmt(tot) + '</span>' +
+        '<span class="tt-rem">⧗ -' + fmt(Math.max(0, tot - elp)) + '</span></div>' +
+        '<canvas class="wave" width="' + WAVE_BUCKETS + '" height="46" title="Clic/trascina = sposta riproduzione · maniglie 🟢🔴 = inizio/fine"></canvas>' +
+        '<div class="qtrim"><span class="lblg">Inizio <b class="t-in">' + fmt(it.start || 0) + '</b></span>' +
+        '<button class="here-s" title="Inizio = punto attuale">📍</button>' +
+        '<span class="lblr">Fine <b class="t-out">' + (it.end > 0 ? fmt(it.end) : 'fine') + '</b></span>' +
+        '<button class="here-e" title="Fine = punto attuale">📍</button>' +
+        '<button class="rst" title="Azzera">↺</button></div>' +
+        '<div class="qgap">⏸ Pausa dopo <input class="gapv" type="number" min="0" step="1" value="' + (it.gap || 0) + '"> s</div>';
+      card.appendChild(det);
+      const canvas = det.querySelector('.wave');
+      drawWave(canvas, it, i === qIndex); wireWave(canvas, it, i);
+      det.querySelector('.here-s').addEventListener('click', () => { if (i === qIndex) { it.start = Math.max(0, curCur); send({ type: 'setTrim', start: it.start, end: it.end || 0 }); renderQueue(); } });
+      det.querySelector('.here-e').addEventListener('click', () => { if (i === qIndex) { it.end = Math.max(0.5, curCur); send({ type: 'setTrim', start: it.start || 0, end: it.end }); renderQueue(); } });
+      det.querySelector('.rst').addEventListener('click', () => { it.start = 0; it.end = 0; if (i === qIndex) send({ type: 'setTrim', start: 0, end: 0 }); renderQueue(); });
+      det.querySelector('.gapv').addEventListener('change', (e) => { it.gap = Math.max(0, parseFloat(e.target.value) || 0); });
+    }
+    el.appendChild(card);
   });
 }
-function playAt(i) {
+function playAt(i, fromTime) {
   if (i < 0 || i >= queue.length) return;
+  clearGap();
   qIndex = i; const it = queue[i]; playing = true;
-  send({ type: it.kind === 'video' ? 'playVideoTrack' : 'playTrack', path: it.url, start: 0, end: 0 });
+  probeDur(it.url);
+  const startAt = fromTime != null ? Math.max(0, fromTime) : (it.start || 0);
+  send({ type: it.kind === 'video' ? 'playVideoTrack' : 'playTrack', path: it.url, start: startAt, end: it.end || 0 });
   $('#np-name').textContent = it.name; $('#np-play').textContent = '⏸';
   $('#nowbar').classList.remove('hidden'); renderQueue();
 }
@@ -183,13 +300,17 @@ djv.onReport((m) => {
       curCur = m.currentTime; curDur = m.duration;
       $('#np-time').textContent = fmt(curCur) + ' / ' + fmt(curDur);
       if (curDur > 0) $('#seek').value = Math.round(curCur / curDur * 1000);
+      updateOpenDetail();
+      break;
+    case 'durations':
+      (m.list || []).forEach((d) => { durCache[d.path] = d.duration; });
+      if (openDetail >= 0) renderQueue();
       break;
     case 'playState':
       playing = m.playing; $('#np-play').textContent = playing ? '⏸' : '▶';
       break;
     case 'trackEnded':
-      if (qIndex >= 0 && qIndex + 1 < queue.length) playAt(qIndex + 1);
-      else { playing = false; $('#np-play').textContent = '▶'; }
+      afterTrackEnd();
       break;
     case 'meters':
       setMeter('m-bass', m.bass); setMeter('m-mid', m.mid); setMeter('m-treble', m.treble);

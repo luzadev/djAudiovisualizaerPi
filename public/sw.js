@@ -1,6 +1,7 @@
-// Minimal app-shell cache so the remote installs as a PWA and the UI loads fast.
-// API, media and websockets are always fetched from the network (never cached).
-const CACHE = 'djv-shell-v1';
+// App-shell caching for installability/offline. The server is local and fast,
+// so we use NETWORK-FIRST for the shell (always get the latest UI after a
+// redeploy) and fall back to cache only when offline. API/media never cached.
+const CACHE = 'djv-shell-v2';
 const SHELL = [
   './', 'index.html', 'css/mobile.css',
   'js/net.js', 'js/control.js', 'js/engine/shaders.js', 'js/engine/effects.js',
@@ -15,5 +16,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.pathname.startsWith('/api') || url.pathname.startsWith('/media')) return;
-  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
+  e.respondWith(
+    fetch(e.request).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+      return res;
+    }).catch(() => caches.match(e.request))
+  );
 });

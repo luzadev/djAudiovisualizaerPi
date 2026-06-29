@@ -287,10 +287,14 @@ function probeDurations(paths) {
   paths.forEach(p => {
     // A <video> element reads duration for both audio and video files.
     const a = document.createElement('video');
-    a.preload = 'metadata';
-    a.onloadedmetadata = () => { results.push({ path: p, duration: isFinite(a.duration) ? a.duration : 0 }); finish(); };
-    a.onerror = () => { results.push({ path: p, duration: 0 }); finish(); };
+    a.preload = 'metadata'; a.muted = true;
+    let done = false;
+    const ok = (dur) => { if (done) return; done = true; results.push({ path: p, duration: isFinite(dur) && dur > 0 ? dur : 0 }); finish(); };
+    a.onloadedmetadata = () => ok(a.duration);
+    a.onerror = () => ok(0);
+    setTimeout(() => ok(0), 6000); // never hang if metadata never fires
     a.src = toFileURL(p);
+    a.load(); // some Chromium builds need an explicit load() for detached media
   });
 }
 

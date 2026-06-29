@@ -103,8 +103,10 @@ app.get('/api/peaks', (req, res) => {
         peaks[b] = m; if (m > top) top = m;
       }
       for (let b = 0; b < buckets; b++) peaks[b] = Math.min(1, peaks[b] / top);
-      peaksCache.set(key, peaks);
-      res.json(peaks);
+      // Exact duration from the decoded mono 8 kHz stream: samples / 8000.
+      const out = { peaks, duration: n / 8000 };
+      peaksCache.set(key, out);
+      res.json(out);
     });
 });
 
