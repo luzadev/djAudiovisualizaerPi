@@ -341,6 +341,9 @@ djv.onControl(async (m) => {
         djv.report({ type: 'playState', playing: true });
       } catch (e) { djv.report({ type: 'error', message: e.message }); }
       break;
+    case 'diag':
+      djv.report({ type: 'diag', stage: 'poll', ctx: audio.ctx.state, mode: audio.mode });
+      break;
     case 'playVideoTrack':
       try {
         audio.setTrim(m.start || 0, m.end || 0);

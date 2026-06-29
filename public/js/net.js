@@ -14,10 +14,15 @@
     ws.onopen = () => { ready = true; setStatus(true); while (queue.length) ws.send(queue.shift()); };
     ws.onclose = () => { ready = false; setStatus(false); setTimeout(connect, 1000); }; // survive server restarts
     ws.onerror = () => { try { ws.close(); } catch (e) {} };
-    ws.onmessage = (ev) => {
-      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    const handle = (txt) => {
+      let m; try { m = JSON.parse(txt); } catch (e) { return; }
       if (m.ch === 'ctl') ctlCbs.forEach(cb => cb(m.msg));
       else if (m.ch === 'rpt') rptCbs.forEach(cb => cb(m.msg));
+    };
+    ws.onmessage = (ev) => {
+      if (typeof ev.data === 'string') handle(ev.data);
+      else if (ev.data && typeof ev.data.text === 'function') ev.data.text().then(handle); // Blob
+      else handle(String(ev.data));
     };
   }
   connect();

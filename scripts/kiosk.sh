@@ -11,4 +11,5 @@ exec "$BIN" \
   --ozone-platform=wayland \
   --ignore-gpu-blocklist \
   --test-type \
+  --disk-cache-size=1 --disable-back-forward-cache \
   "$URL" >/tmp/chromium-kiosk.log 2>&1

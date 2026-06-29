@@ -30,7 +30,11 @@ function ffmpegPath() {
 
 const app = express();
 app.use(express.json({ limit: '4mb' }));
-app.use(express.static(path.join(ROOT, 'public')));
+// Never cache the app shell (HTML/JS/CSS): on a local appliance the network is
+// fast and this guarantees the kiosk/phone always run the latest deployed code.
+// Media files (large) stay cacheable.
+app.use((req, res, next) => { if (!req.path.startsWith('/media')) res.set('Cache-Control', 'no-store'); next(); });
+app.use(express.static(path.join(ROOT, 'public'), { etag: false, lastModified: false }));
 app.use('/media', express.static(MEDIA_DIR));
 app.use('/svg', express.static(SVG_DIR));
 
@@ -62,6 +66,8 @@ const upload = multer({
 app.post('/api/upload', upload.array('files'), (req, res) => {
   res.json({ ok: true, count: (req.files || []).length });
 });
+
+app.get('/api/clients', (_req, res) => { res.json([...wss.clients].map((c) => ({ role: c.role, open: c.readyState === 1 }))); });
 
 app.get('/api/svgs', (_req, res) => {
   let files = [];
@@ -163,7 +169,10 @@ wss.on('connection', (ws, req) => {
   }
 });
 function broadcast(role, data) {
-  wss.clients.forEach(c => { if (c.readyState === 1 && c.role === role) c.send(data); });
+  // Always send a TEXT frame: browsers receive binary frames as Blob and would
+  // fail JSON.parse, so commands would silently never reach the output page.
+  const txt = typeof data === 'string' ? data : data.toString();
+  wss.clients.forEach(c => { if (c.readyState === 1 && c.role === role) c.send(txt); });
 }
 
 server.listen(PORT, () => {
