@@ -46,7 +46,7 @@ User=$USER_NAME
 PAMName=login
 TTYPath=/dev/tty1
 ExecStartPre=/bin/sh -c 'until curl -sf http://localhost:8080/ >/dev/null; do sleep 1; done'
-ExecStart=/usr/bin/cage -- $DIR/scripts/kiosk.sh
+ExecStart=/usr/bin/cage -- /bin/bash $DIR/scripts/kiosk.sh
 Restart=always
 
 [Install]

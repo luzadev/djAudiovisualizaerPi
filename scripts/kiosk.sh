@@ -8,5 +8,6 @@ exec "$BIN" \
   --disable-translate --disable-features=Translate \
   --check-for-update-interval=31536000 \
   --overscroll-history-navigation=0 \
-  --ozone-platform=wayland --use-gl=egl \
-  "$URL"
+  --ozone-platform=wayland \
+  --ignore-gpu-blocklist \
+  "$URL" >/tmp/chromium-kiosk.log 2>&1

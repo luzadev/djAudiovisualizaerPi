@@ -8,7 +8,13 @@ const canvas = $('#gl');
 let viz;
 try {
   viz = new Visualizer(canvas);
+  try {
+    const gl = canvas.getContext('webgl2');
+    const d = gl && gl.getExtension('WEBGL_debug_renderer_info');
+    djv.report({ type: 'gpuInfo', webgl2: !!gl, renderer: d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : (gl && gl.getParameter(gl.RENDERER)) });
+  } catch (e2) {}
 } catch (e) {
+  djv.report({ type: 'gpuInfo', webgl2: false, message: e.message });
   document.body.innerHTML = '<div style="color:#fff;padding:40px;font-family:sans-serif">' +
     'Errore grafica:<br><pre>' + e.message + '</pre></div>';
   throw e;
