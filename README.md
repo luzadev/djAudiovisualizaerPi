@@ -56,11 +56,17 @@ i visual a tutto schermo; dal telefono apri `http://<ip-del-pi>:8080/`.
 
 I brani vanno in `media/` (chiavetta USB, condivisione di rete, o upload dall'app).
 
-### Rete
-- **Hotspot del Pi** (consigliato da palco): configura il Pi come access point
-  (NetworkManager: `nmcli device wifi hotspot`), poi il telefono si collega alla
-  rete del Pi e apre l'indirizzo.
-- **WiFi del locale**: il Pi e il telefono sulla stessa rete; usa l'IP del Pi.
+### Rete — Hotspot (consigliato da palco)
+Il Pi crea la sua rete WiFi su `wlan0` (NetworkManager), così basta il telefono.
+
+- **SSID**: `DJVisualizer` · **password**: `djvisualizer2026`
+- **Remote**: <http://10.42.0.1:8080/>  (IP fisso dell'hotspot)
+- Parte da solo al boot (connessione `Hotspot`, autoconnect, priorità 100).
+- Cambiare SSID/password:
+  `sudo nmcli connection modify Hotspot 802-11-wireless.ssid "NuovoNome" wifi-sec.psk "nuovapassword"`
+- Passare a una rete WiFi normale (per aggiornamenti):
+  `bash scripts/wifi-join.sh "NomeRete" "password"` → poi `bash scripts/hotspot-on.sh` per tornare AP.
+- **Amministrazione**: la porta **ethernet** resta sempre disponibile per SSH/manutenzione.
 
 ## Funzioni del telecomando
 - **🌀 Effetti**: libreria completa (famiglie + ricerca) + sagome SVG.
