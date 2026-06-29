@@ -10,4 +10,5 @@ exec "$BIN" \
   --overscroll-history-navigation=0 \
   --ozone-platform=wayland \
   --ignore-gpu-blocklist \
+  --test-type \
   "$URL" >/tmp/chromium-kiosk.log 2>&1
