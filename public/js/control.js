@@ -576,6 +576,24 @@ function updateRec() {
   $('#rec').classList.toggle('recording', recOn);
 }
 
+// Power: reboot / shutdown the Pi. Two-tap confirm to avoid accidental taps.
+function armPower(btnId, action) {
+  const btn = $('#' + btnId); if (!btn) return;
+  const orig = btn.textContent; let armed = false, t = null;
+  btn.addEventListener('click', () => {
+    if (!armed) {
+      armed = true; btn.classList.add('armed'); btn.textContent = '⚠️ Tocca per confermare';
+      t = setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.textContent = orig; }, 4000);
+      return;
+    }
+    clearTimeout(t); armed = false; btn.classList.remove('armed'); btn.textContent = orig;
+    $('#pw-status').textContent = action === 'reboot' ? '🔄 Riavvio in corso… il telecomando si riconnette da solo tra ~40s.' : '⏻ Spegnimento in corso… per riaccendere stacca e riattacca l\'alimentazione.';
+    fetch('/api/power/' + action, { method: 'POST' }).catch(() => {});
+  });
+}
+armPower('pw-reboot', 'reboot');
+armPower('pw-shutdown', 'shutdown');
+
 // ---- Reports ---------------------------------------------------------------
 function setMeter(id, v) { const e = $('#' + id); if (e) e.style.width = Math.min(100, (v || 0) * 100) + '%'; }
 djv.onReport((m) => {

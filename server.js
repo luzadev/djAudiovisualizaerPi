@@ -69,6 +69,16 @@ app.post('/api/upload', upload.array('files'), (req, res) => {
 
 app.get('/api/clients', (_req, res) => { res.json([...wss.clients].map((c) => ({ role: c.role, open: c.readyState === 1 }))); });
 
+// ---- Power: reboot / shutdown the appliance (sudo is passwordless on the Pi) -
+app.post('/api/power/:action', (req, res) => {
+  const action = req.params.action;
+  if (action !== 'reboot' && action !== 'shutdown') return res.status(400).json({ ok: false, error: 'azione non valida' });
+  res.json({ ok: true, action });
+  // Reply first, then act — the command tears down this very process/host.
+  // Use systemctl explicitly (the service PATH is minimal); sudo is passwordless.
+  setTimeout(() => { try { execFile('sudo', ['systemctl', action === 'reboot' ? 'reboot' : 'poweroff']); } catch (e) {} }, 700);
+});
+
 app.get('/api/svgs', (_req, res) => {
   let files = [];
   try { files = fs.readdirSync(SVG_DIR).filter(f => /\.svg$/i.test(f)); } catch (e) {}

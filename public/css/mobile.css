@@ -35,6 +35,9 @@ button { cursor: pointer; }
 button:active { filter: brightness(1.3); }
 button.wide { width: 100%; margin-top: 10px; font-size: 15px; }
 #audio-src { width: 100%; }
+button.danger { border-color: rgba(255,120,120,.5); color: #ffb3b3; background: rgba(255,80,80,.10); }
+button.danger.armed { background: #c0392b; color: #fff; border-color: #c0392b; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { filter: brightness(1.35); } }
 input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; padding: 0; height: 34px; border: none; }
 input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 4px; background: rgba(255,255,255,.14); }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); margin-top: -9px; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
