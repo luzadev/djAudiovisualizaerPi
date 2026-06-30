@@ -35,7 +35,9 @@
       <div class="row">
         <button id="media-refresh">↻ Aggiorna</button>
         <button id="media-upload-btn">⬆️ Carica file</button>
-        <input id="media-upload" type="file" accept="audio/*,video/*" multiple hidden />
+        <!-- Explicit extensions first: mobile pickers (Android/iOS Chrome) grey out
+             mp3 etc. when the provider reports a generic MIME; extension tokens fix it. -->
+        <input id="media-upload" type="file" accept=".mp3,.m4a,.aac,.wav,.flac,.ogg,.opus,.aif,.aiff,.mp4,.mov,.m4v,.webm,.mkv,audio/*,video/*" multiple hidden />
       </div>
       <div id="nowbar" class="nowbar hidden">
         <div class="np-top"><span id="np-name">—</span><span id="np-time">0:00 / 0:00</span></div>

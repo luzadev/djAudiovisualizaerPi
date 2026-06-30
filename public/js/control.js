@@ -223,9 +223,16 @@ $('#seek').addEventListener('input', (e) => { if (curDur > 0) send({ type: 'seek
 $('#media-refresh').addEventListener('click', loadLibrary);
 $('#media-upload-btn').addEventListener('click', () => $('#media-upload').click());
 $('#media-upload').addEventListener('change', (e) => {
-  const fd = new FormData(); [...e.target.files].forEach((f) => fd.append('files', f));
-  $('#media-upload-btn').textContent = '⏳ Carico…';
-  fetch('/api/upload', { method: 'POST', body: fd }).then(() => { e.target.value = ''; $('#media-upload-btn').textContent = '⬆️ Carica file'; loadLibrary(); });
+  const files = [...e.target.files];
+  if (!files.length) return;
+  const fd = new FormData(); files.forEach((f) => fd.append('files', f));
+  const btn = $('#media-upload-btn');
+  btn.textContent = '⏳ Carico ' + files.length + '…';
+  const reset = (txt) => { e.target.value = ''; btn.textContent = txt; setTimeout(() => { btn.textContent = '⬆️ Carica file'; }, 2500); };
+  fetch('/api/upload', { method: 'POST', body: fd })
+    .then((r) => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+    .then((res) => { reset('✅ ' + (res && res.count || files.length) + ' caricati'); loadLibrary(); })
+    .catch((err) => { reset('❌ Errore: ' + err.message); });
 });
 loadLibrary();
 
