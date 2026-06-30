@@ -59,7 +59,7 @@ I brani vanno in `media/` (chiavetta USB, condivisione di rete, o upload dall'ap
 ### Rete — Hotspot (consigliato da palco)
 Il Pi crea la sua rete WiFi su `wlan0` (NetworkManager), così basta il telefono.
 
-- **SSID**: `DJVisualizer` · **password**: `djvisualizer2026`
+- **SSID**: `DJVisualizer` · **password**: _scegli la tua_ (impostata in fase di setup; vedi sotto come cambiarla)
 - **Remote**: <http://10.42.0.1:8080/>  (IP fisso dell'hotspot)
 - Parte da solo al boot (connessione `Hotspot`, autoconnect, priorità 100).
 - Cambiare SSID/password:
