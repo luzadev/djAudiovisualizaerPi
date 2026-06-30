@@ -90,6 +90,13 @@
 
     <!-- AUDIO -->
     <section class="panel hidden" data-tab="audio">
+      <label class="lbl">Sorgente audio
+        <button id="audio-src-refresh" class="mini" title="Rileva dispositivi di ingresso">↻ Rileva</button>
+      </label>
+      <select id="audio-src">
+        <option value="">🎵 File / Playlist</option>
+      </select>
+      <div id="audio-src-hint" class="hint">Per un ingresso live serve una scheda audio USB collegata al Pi. I visual reagiscono alla sorgente (l'audio resta sul mixer).</div>
       <label class="lbl">Reattività <span id="gain-v">1.0×</span></label>
       <input id="gain" type="range" min="0" max="3" step="0.05" value="1" />
       <label class="lbl">Velocità <span id="speed-v">1.0×</span></label>

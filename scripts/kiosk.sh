@@ -5,6 +5,7 @@ BIN="$(command -v chromium-browser || command -v chromium || echo chromium)"
 exec "$BIN" \
   --kiosk --noerrordialogs --disable-infobars --no-first-run \
   --autoplay-policy=no-user-gesture-required \
+  --use-fake-ui-for-media-stream \
   --disable-translate --disable-features=Translate \
   --check-for-update-interval=31536000 \
   --overscroll-history-navigation=0 \

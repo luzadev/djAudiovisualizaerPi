@@ -543,6 +543,27 @@ slider('bass', (v) => { $('#bass-v').textContent = v.toFixed(2) + '×'; send({ t
 slider('mid', (v) => { $('#mid-v').textContent = v.toFixed(2) + '×'; send({ type: 'bandGain', band: 'mid', value: v }); });
 slider('treble', (v) => { $('#treble-v').textContent = v.toFixed(2) + '×'; send({ type: 'bandGain', band: 'treble', value: v }); });
 
+// ---- Sorgente audio (file vs ingresso live USB) ----------------------------
+let inputDevices = [];
+function renderAudioSrc(selId) {
+  const sel = $('#audio-src'); if (!sel) return;
+  const cur = selId != null ? selId : sel.value;
+  sel.innerHTML = '<option value="">🎵 File / Playlist</option>' +
+    inputDevices.map((d) => '<option value="' + d.deviceId + '">🎚 ' + (d.label || 'Ingresso ' + d.deviceId.slice(0, 6)) + '</option>').join('');
+  sel.value = cur;
+  const hint = $('#audio-src-hint');
+  if (hint) hint.textContent = inputDevices.length
+    ? inputDevices.length + ' ingresso/i rilevato/i. Scegli la scheda USB: i visual reagiranno alla sorgente (l\'audio resta sul mixer).'
+    : 'Nessun ingresso rilevato. Collega una scheda audio USB al Pi, poi premi ↻ Rileva.';
+}
+$('#audio-src').addEventListener('change', (e) => {
+  const id = e.target.value;
+  if (id) { send({ type: 'useInput', deviceId: id }); $('#now').textContent = 'Ingresso live'; }
+  else { send({ type: 'playSilence' }); } // back to file: stops the live input
+});
+$('#audio-src-refresh').addEventListener('click', () => send({ type: 'refreshDevices' }));
+send({ type: 'refreshDevices' }); // ask the output for the current input device list
+
 // ---- Output / Rec ----------------------------------------------------------
 let recOn = false;
 $('#fs').addEventListener('click', () => send({ type: 'outputFullscreen' }));
@@ -580,6 +601,7 @@ djv.onReport((m) => {
     case 'meters':
       setMeter('m-bass', m.bass); setMeter('m-mid', m.mid); setMeter('m-treble', m.treble);
       break;
+    case 'devices': inputDevices = m.list || []; renderAudioSrc(); break;
     case 'recState': recOn = m.recording; updateRec(); break;
     case 'recSaved': $('#rec-status').textContent = '✅ Salvato: ' + m.path; break;
     case 'recError': $('#rec-status').textContent = '⚠️ ' + m.message; break;

@@ -299,12 +299,16 @@ function probeDurations(paths) {
 }
 
 async function reportDevices() {
-  try {
-    const inputs = await audio.listInputDevices();
-    djv.report({ type: 'devices', list: inputs.map(d => ({ deviceId: d.deviceId, label: d.label })) });
-    const outputs = await audio.listOutputDevices();
-    djv.report({ type: 'outputs', list: outputs.map(d => ({ deviceId: d.deviceId, label: d.label })) });
-  } catch (e) { /* ignore */ }
+  // Always answer, even with an empty list: getUserMedia can hang/reject when no
+  // input device exists (e.g. before a USB sound card is plugged in), so guard
+  // each probe with a timeout and still report so the control UI isn't left hanging.
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+  let inputs = [];
+  try { inputs = await withTimeout(audio.listInputDevices(), 3000); } catch (e) { /* none/blocked */ }
+  djv.report({ type: 'devices', list: inputs.map(d => ({ deviceId: d.deviceId, label: d.label })) });
+  let outputs = [];
+  try { outputs = await withTimeout(audio.listOutputDevices(), 3000); } catch (e) { /* none/blocked */ }
+  djv.report({ type: 'outputs', list: outputs.map(d => ({ deviceId: d.deviceId, label: d.label })) });
 }
 
 // ---------------------------------------------------------------- command bus
