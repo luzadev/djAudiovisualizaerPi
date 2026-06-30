@@ -11,6 +11,22 @@ sudo apt update
 sudo apt install -y nodejs npm ffmpeg cage curl chromium-browser || \
   sudo apt install -y nodejs npm ffmpeg cage curl chromium
 
+# Audio: il vc4hdmi del Pi 5 espone solo il formato IEC958 e NON ha mixing
+# hardware, quindi ALSA grezzo è esclusivo (un solo stream) e l'audio dei file
+# resta muto mentre Chromium tiene il device. PipeWire fa da mixer software e
+# gestisce la conversione IEC958, così tutti gli stream di Chromium escono su HDMI.
+echo "==> Installo PipeWire (mixer audio per l'uscita HDMI)…"
+sudo apt install -y pipewire pipewire-pulse pipewire-alsa wireplumber
+sudo loginctl enable-linger "$USER_NAME"   # i servizi utente partono al boot
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable --now pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null || true
+systemctl --user start pipewire pipewire-pulse 2>/dev/null || true
+sleep 2
+# Porta l'uscita HDMI a volume pieno e smutala (best-effort).
+HDMI_SINK="$(wpctl status 2>/dev/null | grep -iE 'HDMI' | grep -oE '^\s*\*?\s*[0-9]+' | grep -oE '[0-9]+' | head -1)"
+[ -n "$HDMI_SINK" ] && { wpctl set-volume "$HDMI_SINK" 1.0; wpctl set-mute "$HDMI_SINK" 0; }
+
 echo "==> Installo i pacchetti npm…"
 cd "$DIR"
 npm install --omit=dev
