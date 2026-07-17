@@ -142,3 +142,5 @@ textarea { width: 100%; min-height: 90px; resize: vertical; }
 }
 #tabs button small { font-size: 9px; }
 #tabs button.active { opacity: 1; color: var(--accent); }
+.item a.dl { flex: 0 0 auto; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(76,175,80,.15); border-color: #4caf50; text-decoration: none; color: #d9ffd9; }
+#rec-status a { color: #8cf5a0; }

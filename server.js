@@ -37,6 +37,7 @@ app.use((req, res, next) => { if (!req.path.startsWith('/media')) res.set('Cache
 app.use(express.static(path.join(ROOT, 'public'), { etag: false, lastModified: false }));
 app.use('/media', express.static(MEDIA_DIR));
 app.use('/svg', express.static(SVG_DIR));
+app.use('/recordings', express.static(REC_DIR)); // reels: download the MP4s from the phone
 
 // ---- Media library ---------------------------------------------------------
 const AUDIO_RE = /\.(mp3|m4a|aac|wav|flac|ogg|opus|aif|aiff)$/i;
@@ -126,6 +127,22 @@ app.get('/api/peaks', (req, res) => {
     });
 });
 
+// ---- Reels: list / delete the recorded MP4s --------------------------------
+app.get('/api/recordings', (_req, res) => {
+  let files = [];
+  try { files = fs.readdirSync(REC_DIR).filter(f => /\.mp4$/i.test(f)); } catch (e) {}
+  const items = files.map(f => {
+    const st = fs.statSync(path.join(REC_DIR, f));
+    return { name: f, url: '/recordings/' + encodeURIComponent(f), size: st.size, mtime: st.mtimeMs };
+  }).sort((a, b) => b.mtime - a.mtime);
+  res.json(items);
+});
+app.post('/api/recordings/delete', (req, res) => {
+  const f = path.join(REC_DIR, path.basename((req.body && req.body.name) || ''));
+  try { fs.unlinkSync(f); res.json({ ok: true }); }
+  catch (e) { res.status(404).json({ ok: false, error: e.message }); }
+});
+
 // ---- Recording: output streams WebM chunks, we mux/transcode to MP4 --------
 let rec = null; // { ws stream, tmp }
 function startRec() {
@@ -135,10 +152,14 @@ function startRec() {
 }
 function transcode(input, output, w, h) {
   const vf = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
-  const args = ['-y', '-i', input, '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast',
-    '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', output];
+  // Pi 5 has no hardware H.264 encoder: keep the software encode LIGHT
+  // (ultrafast, 3 threads, low priority) so the kiosk/server stay responsive
+  // and the box doesn't brown-out under full-core load.
+  const args = ['-n', '10', ffmpegPath(), '-y', '-i', input, '-vf', vf,
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-threads', '3',
+    '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', output];
   return new Promise((resolve, reject) => {
-    execFile(ffmpegPath(), args, { maxBuffer: 1 << 24 }, (err, _o, stderr) =>
+    execFile('nice', args, { maxBuffer: 1 << 24 }, (err, _o, stderr) =>
       err ? reject(new Error(String(stderr || err.message).slice(-400))) : resolve());
   });
 }
@@ -153,7 +174,8 @@ app.post('/api/rec/stop', async (req, res) => {
   const cur = rec; rec = null;
   await new Promise(r => cur.stream.end(r));
   const out = path.join(REC_DIR, 'DJV-' + Date.now() + '.mp4');
-  try { await transcode(cur.tmp, out, w, h); fs.unlink(cur.tmp, () => {}); res.json({ ok: true, path: out }); }
+  const name = path.basename(out);
+  try { await transcode(cur.tmp, out, w, h); fs.unlink(cur.tmp, () => {}); res.json({ ok: true, path: out, name, url: '/recordings/' + encodeURIComponent(name) }); }
   catch (e) { res.json({ ok: false, error: e.message }); }
 });
 

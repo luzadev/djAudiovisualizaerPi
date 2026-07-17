@@ -65,7 +65,7 @@ function restartSlideshow() {
 // ---------------------------------------------------------------- recording
 // Records the output canvas (video) + the audio tap into a WebM stream that
 // main transcodes to MP4 at the chosen aspect ratio.
-let recorder = null, recording = false, pendingRecOpts = null;
+let recorder = null, recording = false, pendingRecOpts = null, recAutoStop = null;
 let recCanvas = null, recCtx = null, composeRAF = null;
 
 function pickMime() {
@@ -159,7 +159,7 @@ function stopCompose() {
   if (composeRAF) { cancelAnimationFrame(composeRAF); composeRAF = null; }
 }
 
-async function startRecording() {
+async function startRecording(opts) {
   if (recording) return;
   try {
     await djv.recStart();
@@ -185,11 +185,16 @@ async function startRecording() {
       const res = await djv.recStop(pendingRecOpts || {});
       recording = false;
       djv.report({ type: 'recState', recording: false });
-      if (res && res.ok) djv.report({ type: 'recSaved', path: res.path });
+      if (res && res.ok) djv.report({ type: 'recSaved', path: res.path, name: res.name, url: res.url });
       else djv.report({ type: 'recError', message: (res && res.error) || 'errore sconosciuto' });
     };
     recorder.start(2000); // emit a chunk every 2s
     recording = true;
+    // Reel mode: auto-stop after maxMs using the format chosen at start.
+    if (opts && opts.maxMs > 0) {
+      clearTimeout(recAutoStop);
+      recAutoStop = setTimeout(() => stopRecording({ w: opts.w, h: opts.h }), opts.maxMs);
+    }
     djv.report({ type: 'recState', recording: true });
   } catch (e) {
     stopCompose();
@@ -198,6 +203,7 @@ async function startRecording() {
 }
 
 function stopRecording(opts) {
+  clearTimeout(recAutoStop); recAutoStop = null;
   if (!recording || !recorder) return;
   pendingRecOpts = { w: opts && opts.w, h: opts && opts.h };
   recorder.stop();
@@ -327,7 +333,7 @@ djv.onControl(async (m) => {
       djv.report({ type: 'autoVj', on: autoVj });
       break;
     case 'svg': loadCustomTexture(m.dataUrl); break;
-    case 'recStart': startRecording(); break;
+    case 'recStart': startRecording(m); break;
     case 'recStop': stopRecording(m); break;
     case 'gain': audio.gain = m.value; break;
     case 'speed': speed = m.value; audio.scrollRate = m.value; break;

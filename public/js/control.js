@@ -604,17 +604,56 @@ $('#audio-src').addEventListener('change', (e) => {
 $('#audio-src-refresh').addEventListener('click', () => send({ type: 'refreshDevices' }));
 send({ type: 'refreshDevices' }); // ask the output for the current input device list
 
-// ---- Output / Rec ----------------------------------------------------------
-let recOn = false;
+// ---- Output / Rec (Reels) --------------------------------------------------
+let recOn = false, recDurMs = 0, recT0 = 0, recCd = null;
 $('#fs').addEventListener('click', () => send({ type: 'outputFullscreen' }));
 $('#rec').addEventListener('click', () => {
-  if (!recOn) { send({ type: 'recStart' }); }
-  else { const [w, h] = $('#rec-fmt').value.split('x').map(Number); send({ type: 'recStop', w, h }); }
+  const [w, h] = $('#rec-fmt').value.split('x').map(Number);
+  if (!recOn) {
+    recDurMs = parseInt($('#rec-dur').value, 10) || 0;
+    send({ type: 'recStart', w, h, maxMs: recDurMs }); // output auto-stops at maxMs
+  } else send({ type: 'recStop', w, h });
 });
 function updateRec() {
-  $('#rec').textContent = recOn ? '⏹ Ferma registrazione' : '🔴 Avvia registrazione';
+  clearInterval(recCd); recCd = null;
   $('#rec').classList.toggle('recording', recOn);
+  if (!recOn) { $('#rec').textContent = '🔴 Registra Reel'; return; }
+  recT0 = Date.now();
+  const tick = () => {
+    const el = (Date.now() - recT0) / 1000;
+    $('#rec').textContent = recDurMs > 0
+      ? '⏺ REC — stop tra ' + Math.max(0, Math.ceil(recDurMs / 1000 - el)) + 's (tocca per fermare)'
+      : '⏹ Ferma registrazione (' + fmt(el) + ')';
+  };
+  tick(); recCd = setInterval(tick, 500);
 }
+
+// Recorded reels list: download to the phone (then share to Instagram) or delete.
+function fmtSize(b) { return b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB'; }
+function loadRecs() {
+  fetch('/api/recordings').then((r) => r.json()).then((items) => {
+    const el = $('#rec-list'); el.innerHTML = '';
+    if (!items.length) { el.innerHTML = '<div class="empty">Nessun reel ancora. Registra col pulsante qui sopra.</div>'; return; }
+    items.forEach((it) => {
+      const d = document.createElement('div'); d.className = 'item';
+      const date = new Date(it.mtime);
+      d.innerHTML = '<span>🎬 ' + date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' }) + ' ' +
+        date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + fmtSize(it.size) + '</span>';
+      const dl = document.createElement('a'); dl.textContent = '📥'; dl.title = 'Scarica sul telefono';
+      dl.href = it.url; dl.download = it.name; dl.className = 'dl';
+      const del = document.createElement('button'); del.textContent = '✕';
+      del.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        fetch('/api/recordings/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: it.name }) })
+          .then(() => loadRecs());
+      });
+      d.appendChild(dl); d.appendChild(del);
+      el.appendChild(d);
+    });
+  }).catch(() => {});
+}
+$('#rec-refresh').addEventListener('click', loadRecs);
+loadRecs();
 
 // Power: reboot / shutdown the Pi. Two-tap confirm to avoid accidental taps.
 function armPower(btnId, action) {
@@ -661,8 +700,13 @@ djv.onReport((m) => {
       break;
     case 'autoVj': setAutoVj(m); break;
     case 'devices': inputDevices = m.list || []; renderAudioSrc(); break;
-    case 'recState': recOn = m.recording; updateRec(); break;
-    case 'recSaved': $('#rec-status').textContent = '✅ Salvato: ' + m.path; break;
+    case 'recState': recOn = m.recording; updateRec(); if (!recOn) loadRecs(); break;
+    case 'recSaved':
+      $('#rec-status').innerHTML = m.url
+        ? '✅ Reel pronto — <a href="' + m.url + '" download="' + (m.name || 'reel.mp4') + '">📥 scarica sul telefono</a> e condividilo su Instagram'
+        : '✅ Salvato: ' + m.path;
+      loadRecs();
+      break;
     case 'recError': $('#rec-status').textContent = '⚠️ ' + m.message; break;
   }
 });

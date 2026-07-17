@@ -126,15 +126,26 @@
     <!-- OUTPUT / REC -->
     <section class="panel hidden" data-tab="out">
       <button id="fs" class="wide">🖥 Output a tutto schermo</button>
-      <label class="lbl">Formato registrazione</label>
-      <select id="rec-fmt">
-        <option value="1920x1080">16:9 (1920×1080)</option>
-        <option value="1080x1920">9:16 (1080×1920)</option>
-        <option value="1080x1080">1:1 (1080×1080)</option>
-        <option value="1440x1080">4:3 (1440×1080)</option>
-      </select>
-      <button id="rec" class="wide">🔴 Avvia registrazione</button>
+      <label class="lbl">Registra Reel / video</label>
+      <div class="row">
+        <select id="rec-fmt">
+          <option value="1080x1920" selected>📱 Reel 9:16 (1080×1920)</option>
+          <option value="1080x1080">1:1 (1080×1080)</option>
+          <option value="1920x1080">16:9 (1920×1080)</option>
+          <option value="1440x1080">4:3 (1440×1080)</option>
+        </select>
+        <select id="rec-dur" title="Si ferma da solo alla durata scelta">
+          <option value="15000">⏱ 15s</option>
+          <option value="30000" selected>⏱ 30s</option>
+          <option value="60000">⏱ 60s</option>
+          <option value="90000">⏱ 90s</option>
+          <option value="0">∞ manuale</option>
+        </select>
+      </div>
+      <button id="rec" class="wide">🔴 Registra Reel</button>
       <div id="rec-status" class="hint"></div>
+      <label class="lbl">Reel registrati <button id="rec-refresh" class="mini">↻</button></label>
+      <div id="rec-list" class="list"></div>
       <label class="lbl">Dispositivo</label>
       <button id="pw-reboot" class="wide danger">🔄 Riavvia Raspberry</button>
       <button id="pw-shutdown" class="wide danger">⏻ Spegni Raspberry</button>
