@@ -68,6 +68,7 @@ class FluidSim {
     this.pDiv = this._program(FluidSim.DIV);
     this.pPress = this._program(FluidSim.PRESS);
     this.pGrad = this._program(FluidSim.GRAD);
+    this.pBuoy = this._program(FluidSim.BUOY);
     this.pShow = this._program(FluidSim.SHOW);
   }
 
@@ -167,52 +168,134 @@ class FluidSim {
     gl.disable(gl.BLEND);
 
     // -- audio-driven splats --------------------------------------------------
+    // Each fluidMode is a different emitter choreography over the same solver:
+    // 'ink' wandering brushes, 'fire' bottom jets + buoyancy, 'ring' rotating
+    // circle with radial beat bursts, 'vortex' two counter-rotating stirrers,
+    // 'wave' a curtain sweeping across the screen.
     const hueShift = (e.hueBase || 0) + t * (e.hueCycle || 0) * 0.5;
     const sat = e.sat !== undefined ? e.sat : 1;
-    for (let i = 0; i < this.emitters.length; i++) {
-      const em = this.emitters[i];
-      const x = 0.5 + 0.36 * Math.sin(t * em.fx + em.phase) * Math.cos(t * 0.09 + em.phase);
-      const y = 0.5 + 0.36 * Math.sin(t * em.fy + em.phase * 1.7);
-      // movement direction (numeric derivative of the wander path)
-      const h = 0.01;
-      const dx = (0.5 + 0.36 * Math.sin((t + h) * em.fx + em.phase) * Math.cos((t + h) * 0.09 + em.phase)) - x;
-      const dy = (0.5 + 0.36 * Math.sin((t + h) * em.fy + em.phase * 1.7)) - y;
-      const inv = 1 / Math.max(1e-5, Math.hypot(dx, dy));
-      // colour: palette A<->B per emitter, slow oscillation + hue cycling
-      const k = 0.5 + 0.5 * Math.sin(t * 0.21 + em.hue * Math.PI * 2);
+    const mode = e.fluidMode || 'ink';
+    // Palette colour helper: A<->B oscillation, hue cycling, then normalized
+    // to full brightness (palette 'a' colours are near-black backgrounds in
+    // the shader families; the palette identity lives in the hue).
+    const dyeCol = (ph) => {
+      const k = 0.5 + 0.5 * Math.sin(t * 0.21 + ph * Math.PI * 2);
       let col = [
         (e.colorA[0] * (1 - k) + e.colorB[0] * k),
         (e.colorA[1] * (1 - k) + e.colorB[1] * k),
         (e.colorA[2] * (1 - k) + e.colorB[2] * k)];
-      col = FluidSim._hue(col, hueShift + em.hue * 0.16, sat);
-      // Normalize to full brightness: palette 'a' colours are near-black
-      // backgrounds in the shader families, but dye must always be vivid —
-      // the palette identity lives in the hue, not the luminance.
+      col = FluidSim._hue(col, hueShift + ph * 0.16, sat);
       const mx = Math.max(col[0], col[1], col[2], 1e-4);
-      col = [col[0] / mx, col[1] / mx, col[2] / mx];
-      // continuous stir: quiet baseline so it never freezes, boosted by bass.
-      // Injection is balanced against the dye dissipation below: too much and
-      // the whole screen saturates to a solid colour, too little and it fades.
-      const force = (14 + 320 * bass) * dt * 60;
-      const inj = (0.5 + 2.8 * bass) * dtReal;
-      this._splat(x, y, dx * inv * force, dy * inv * force,
-        col[0] * inj, col[1] * inj, col[2] * inj, 0.0009 + 0.0013 * bass);
-    }
-    // beat burst: one bright directional shot from a random edge point
+      return [col[0] / mx, col[1] / mx, col[2] / mx];
+    };
+    // Injection is balanced against the dye dissipation below: too much and
+    // the whole screen saturates to a solid colour, too little and it fades.
+    const force = (14 + 320 * bass) * dt * 60;
+    const inj = (0.5 + 2.8 * bass) * dtReal;
+    const rad = 0.0009 + 0.0013 * bass;
     this.beatCool -= dt;
-    if (beat > 0.85 && this.beatCool <= 0) {
-      this.beatCool = 0.18;
-      const a = Math.sin(t * 37.7) * Math.PI * 2;
-      const x = 0.5 + 0.30 * Math.cos(a), y = 0.5 + 0.30 * Math.sin(a);
-      let col = FluidSim._hue([e.colorB[0], e.colorB[1], e.colorB[2]], hueShift, sat);
-      const F = 900 * (0.4 + bass);
-      this._splat(x, y, -Math.cos(a) * F, -Math.sin(a) * F,
-        col[0] * 0.7, col[1] * 0.7, col[2] * 0.7, 0.003 + 0.003 * bass);
+    const onBeat = beat > 0.85 && this.beatCool <= 0;
+    if (onBeat) this.beatCool = 0.18;
+
+    if (mode === 'fire') {
+      // flickering upward jets along the bottom edge (buoyancy pass below)
+      for (let i = 0; i < 3; i++) {
+        const bx = 0.5 + (i - 1) * 0.24 + 0.05 * Math.sin(t * (1.3 + i * 0.37) + i * 2.1);
+        const flick = 0.6 + 0.4 * Math.sin(t * (5.1 + i) + i * 13.7);
+        const c = dyeCol(i / 3);
+        this._splat(bx, 0.04, 0, force * 0.22 * (0.7 + 0.8 * flick),
+          c[0] * inj * 2.2, c[1] * inj * 2.2, c[2] * inj * 2.2, rad * 1.2);
+      }
+      if (onBeat) {
+        const c = dyeCol(0.5);
+        this._splat(0.5, 0.06, 0, 1400 * (0.4 + bass), c[0] * 0.8, c[1] * 0.8, c[2] * 0.8, 0.006);
+      }
+    } else if (mode === 'ring') {
+      // emitters on a slowly spinning circle, stirring tangentially
+      const N = 6, R = 0.27, spin = t * 0.5;
+      for (let i = 0; i < N; i++) {
+        const a = spin + i * Math.PI * 2 / N;
+        const c = dyeCol(i / N);
+        this._splat(0.5 + R * Math.cos(a), 0.5 + R * Math.sin(a),
+          -Math.sin(a) * force, Math.cos(a) * force, c[0] * inj, c[1] * inj, c[2] * inj, rad);
+      }
+      if (onBeat) { // radial shockwave from the centre
+        const c = dyeCol(Math.sin(t * 3.1) * 0.5 + 0.5);
+        for (let i = 0; i < N; i++) {
+          const a = spin + (i + 0.5) * Math.PI * 2 / N, F = 1100 * (0.4 + bass);
+          this._splat(0.5 + 0.06 * Math.cos(a), 0.5 + 0.06 * Math.sin(a),
+            Math.cos(a) * F, Math.sin(a) * F, c[0] * 0.35, c[1] * 0.35, c[2] * 0.35, 0.0025);
+        }
+      }
+    } else if (mode === 'vortex') {
+      // two counter-rotating stirrers -> double spiral galaxies
+      for (let s = 0; s < 2; s++) {
+        const sgn = s ? -1 : 1;
+        const cx = 0.5 + sgn * (0.20 + 0.05 * Math.sin(t * 0.4));
+        const cy = 0.5 + 0.08 * Math.sin(t * 0.31 + s * 2.6);
+        const a = t * 1.6 * sgn + s * Math.PI, R = 0.11;
+        const c = dyeCol(s * 0.5 + 0.1);
+        this._splat(cx + R * Math.cos(a), cy + R * Math.sin(a),
+          -Math.sin(a) * sgn * force * 1.3, Math.cos(a) * sgn * force * 1.3,
+          c[0] * inj * 1.4, c[1] * inj * 1.4, c[2] * inj * 1.4, rad);
+      }
+      if (onBeat) { // bright puff where the spirals meet
+        const c = dyeCol(0.8);
+        this._splat(0.5, 0.5, 0, 0, c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.004);
+      }
+    } else if (mode === 'wave') {
+      // travelling sine curtain sweeping rightwards
+      const N = 4;
+      for (let i = 0; i < N; i++) {
+        const x = (t * 0.07 + i / N) % 1;
+        const ph = t * 0.9 + i * 1.7 + x * 6.28;
+        const c = dyeCol(i / N);
+        this._splat(x, 0.5 + 0.28 * Math.sin(ph),
+          force * 0.6, Math.cos(ph) * force * 0.35, c[0] * inj * 1.6, c[1] * inj * 1.6, c[2] * inj * 1.6, rad * 1.3);
+      }
+      if (onBeat) { // side blast riding the wave
+        const c = dyeCol(0.3);
+        this._splat(0.06, 0.5 + 0.3 * Math.sin(t * 5.3), 1000 * (0.4 + bass), 0,
+          c[0] * 0.5, c[1] * 0.5, c[2] * 0.5, 0.0018);
+      }
+    } else {
+      // 'ink': wandering brushes (the original mode)
+      for (let i = 0; i < this.emitters.length; i++) {
+        const em = this.emitters[i];
+        const x = 0.5 + 0.36 * Math.sin(t * em.fx + em.phase) * Math.cos(t * 0.09 + em.phase);
+        const y = 0.5 + 0.36 * Math.sin(t * em.fy + em.phase * 1.7);
+        // movement direction (numeric derivative of the wander path)
+        const h = 0.01;
+        const dx = (0.5 + 0.36 * Math.sin((t + h) * em.fx + em.phase) * Math.cos((t + h) * 0.09 + em.phase)) - x;
+        const dy = (0.5 + 0.36 * Math.sin((t + h) * em.fy + em.phase * 1.7)) - y;
+        const inv = 1 / Math.max(1e-5, Math.hypot(dx, dy));
+        const c = dyeCol(em.hue);
+        this._splat(x, y, dx * inv * force, dy * inv * force,
+          c[0] * inj, c[1] * inj, c[2] * inj, rad);
+      }
+      if (onBeat) { // bright directional shot from a pseudo-random edge point
+        const a = Math.sin(t * 37.7) * Math.PI * 2;
+        const c = dyeCol(0.0);
+        const F = 900 * (0.4 + bass);
+        this._splat(0.5 + 0.30 * Math.cos(a), 0.5 + 0.30 * Math.sin(a),
+          -Math.cos(a) * F, -Math.sin(a) * F, c[0] * 0.7, c[1] * 0.7, c[2] * 0.7, 0.003 + 0.003 * bass);
+      }
     }
 
     // -- solver ---------------------------------------------------------------
     const v = this.vel;
-    let p = this.pCurl;
+    let p;
+    if (mode === 'fire') {
+      // buoyancy: hot (bright) dye rises, like smoke over a flame
+      p = this.pBuoy;
+      gl.useProgram(p);
+      gl.uniform1i(p._u.uVel, this._bind(p, 0, v.a.tex));
+      gl.uniform1i(p._u.uDye, this._bind(p, 1, this.dye.a.tex));
+      gl.uniform1f(p._u.uK, 170);
+      gl.uniform1f(p._u.uDt, dt);
+      this._blit(v.b, p); v.swap();
+    }
+    p = this.pCurl;
     gl.useProgram(p);
     gl.uniform2f(p._u.uTexel, v.a.texelX, v.a.texelY);
     gl.uniform1i(p._u.uVel, this._bind(p, 0, v.a.tex));
@@ -255,12 +338,14 @@ class FluidSim {
     gl.uniform1f(p._u.uDt, dt);
     gl.uniform1i(p._u.uVel, this._bind(p, 0, v.a.tex));
     gl.uniform1i(p._u.uSrc, this._bind(p, 1, v.a.tex));
-    gl.uniform1f(p._u.uDiss, 0.25);
+    gl.uniform1f(p._u.uDiss, mode === 'fire' ? 1.1 : 0.25);
+    gl.uniform1f(p._u.uHeightK, 0.0);
     this._blit(v.b, p); v.swap();
 
     gl.uniform1i(p._u.uVel, this._bind(p, 0, v.a.tex));
     gl.uniform1i(p._u.uSrc, this._bind(p, 1, this.dye.a.tex));
-    gl.uniform1f(p._u.uDiss, 0.6 / (e.speed || 1));  // dye must fade or constant injection saturates; speed-normalized
+    gl.uniform1f(p._u.uDiss, (mode === 'fire' ? 1.0 : 0.6) / (e.speed || 1));  // fire: short-lived flames; others: slow fade
+    gl.uniform1f(p._u.uHeightK, mode === 'fire' ? 8.0 : 0.0);
     this._blit(this.dye.b, p); this.dye.swap();
 
     // -- display --------------------------------------------------------------
@@ -289,10 +374,11 @@ void main(){ vUv = aPos*0.5+0.5; gl_Position = vec4(aPos,0.,1.); }`;
 
 FluidSim.ADVECT = `#version 300 es
 precision highp float; in vec2 vUv; out vec4 o;
-uniform sampler2D uVel, uSrc; uniform vec2 uTexel; uniform float uDt, uDiss;
+uniform sampler2D uVel, uSrc; uniform vec2 uTexel; uniform float uDt, uDiss, uHeightK;
 void main(){
   vec2 pos = vUv - uDt * texture(uVel, vUv).xy * uTexel;
-  o = clamp(texture(uSrc, pos) / (1.0 + uDiss * uDt), -1200., 1200.); // NaN/Inf guard
+  float diss = uDiss * (1.0 + uHeightK * vUv.y);  // fire mode: fade with altitude
+  o = clamp(texture(uSrc, pos) / (1.0 + diss * uDt), -1200., 1200.); // NaN/Inf guard
 }`;
 
 FluidSim.SPLAT = `#version 300 es
@@ -363,6 +449,19 @@ void main(){
   float B = texture(uPress, vUv - vec2(0.,uTexel.y)).x;
   float T = texture(uPress, vUv + vec2(0.,uTexel.y)).x;
   o = vec4(texture(uVel, vUv).xy - 0.5*vec2(R-L, T-B), 0., 1.);
+}`;
+
+FluidSim.BUOY = `#version 300 es
+precision highp float; in vec2 vUv; out vec4 o;
+uniform sampler2D uVel, uDye; uniform float uK, uDt;
+void main(){
+  float l = dot(texture(uDye, vUv).rgb, vec3(0.333));
+  vec2 v = texture(uVel, vUv).xy;
+  // Relax the vertical velocity toward uK*luma: a bounded updraft, unlike an
+  // additive force which integrates to the clamp and turns flames into a wall.
+  float a = min(1., uDt * 4.) * step(0.01, l);
+  v.y += (uK * min(l, 1.5) - v.y) * a;
+  o = vec4(v, 0., 1.);
 }`;
 
 FluidSim.SHOW = `#version 300 es

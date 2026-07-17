@@ -34,7 +34,13 @@ const FAMILIES = [
   { name: 'Reattivo Bassi', scale: 1.0, bgDark: true },
   { name: 'Reattivo Medi', scale: 1.0, bgDark: true },
   { name: 'Reattivo Alti', scale: 1.0, bgDark: true },
-  { name: 'Fluido', scale: 1.0, fluid: true }  // GPU fluid sim (fluid.js), not the uber-shader
+  // GPU fluid sim families (fluid.js), not the uber-shader; fluidMode picks
+  // the emitter choreography over the same solver.
+  { name: 'Fluido', scale: 1.0, fluid: true },
+  { name: 'Fluido Fuoco', scale: 1.0, fluid: true, fluidMode: 'fire' },
+  { name: 'Fluido Anello', scale: 1.0, fluid: true, fluidMode: 'ring' },
+  { name: 'Fluido Vortici', scale: 1.0, fluid: true, fluidMode: 'vortex' },
+  { name: 'Fluido Onda', scale: 1.0, fluid: true, fluidMode: 'wave' }
 ];
 
 // Palettes: low colour (a) -> high colour (b), plus optional hue-cycle/sat.
@@ -90,9 +96,10 @@ function makeEffect(fi, pi, vi) {
     colorA: pal.a,
     colorB: pal.b,
     bgDark: fam.bgDark ? 1 : 0,
-    // Always present (0/1) so Object.assign merges in setEffect can't leave a
-    // stale flag behind when switching between fluid and shader presets.
-    isFluid: fam.fluid ? 1 : 0
+    // Always present (0/1 and a mode string) so Object.assign merges in
+    // setEffect can't leave a stale flag behind when switching presets.
+    isFluid: fam.fluid ? 1 : 0,
+    fluidMode: fam.fluidMode || 'ink'
   };
 }
 
