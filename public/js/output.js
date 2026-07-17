@@ -321,6 +321,8 @@ djv.onControl(async (m) => {
       break;
     case 'autoVj':
       autoVj = !!m.on;
+      if (m.mode) avMode = m.mode;
+      avFamilies = Array.isArray(m.families) ? m.families : avFamilies;
       if (autoVj) { avLastSwitch = 0; avBeatMark = audio.beatCount || 0; }
       djv.report({ type: 'autoVj', on: autoVj });
       break;
@@ -498,10 +500,19 @@ const AV_POOLS = {
   peak: ['Julia', 'Iperspazio', 'Tunnel', 'Moiré', 'Fluido Anello', 'Fluido Fuoco',
     'Vortice', 'Griglia Neon', 'Cristalli']
 };
+let avMode = 'smart', avFamilies = []; // 'smart' | 'all' | 'custom'
 function avPick(mood) {
-  const fams = AV_POOLS[mood] || AV_POOLS.groove;
-  const cands = window.EFFECTS.list.filter(e => fams.indexOf(e.familyName) >= 0 &&
-    (mood === 'peak' ? e.speed >= 1.0 : e.speed <= 1.4) && avRecent.indexOf(e.name) < 0);
+  // Family pool: smart = curated per-mood lists; custom = the user's checklist
+  // (mood still shapes the speed variant); all = no family restriction.
+  let fams = null;
+  if (avMode === 'smart') fams = AV_POOLS[mood] || AV_POOLS.groove;
+  else if (avMode === 'custom' && avFamilies.length) fams = avFamilies;
+  const speedOk = (e) => (mood === 'peak' ? e.speed >= 1.0 : e.speed <= 1.4);
+  let cands = window.EFFECTS.list.filter(e => (!fams || fams.indexOf(e.familyName) >= 0) &&
+    speedOk(e) && avRecent.indexOf(e.name) < 0);
+  // A tight custom list can exhaust the speed filter: retry without it.
+  if (!cands.length) cands = window.EFFECTS.list.filter(e =>
+    (!fams || fams.indexOf(e.familyName) >= 0) && avRecent.indexOf(e.name) < 0);
   const e = cands.length ? cands[Math.floor(Math.random() * cands.length)] : window.EFFECTS.list[0];
   avRecent = [e.name].concat(avRecent).slice(0, 6); // don't repeat the last few
   return e;

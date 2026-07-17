@@ -21,7 +21,15 @@
   <main>
     <!-- EFFETTI -->
     <section class="panel" data-tab="fx">
-      <button id="auto-vj" class="wide" title="L'Auto VJ ascolta il brano (energia, BPM, drop) e cambia effetto da solo a tempo di musica">🤖 Auto VJ</button>
+      <div class="row">
+        <button id="auto-vj" title="L'Auto VJ ascolta il brano (energia, BPM, drop) e cambia effetto da solo a tempo di musica">🤖 Auto VJ</button>
+        <select id="av-mode" title="Da quali famiglie pesca l'Auto VJ">
+          <option value="smart">🎩 Smart (mood)</option>
+          <option value="all">🌐 Tutte</option>
+          <option value="custom">🎯 Scelte…</option>
+        </select>
+      </div>
+      <div id="av-fams" class="av-fams hidden"></div>
       <div class="row">
         <select id="fx-fam"><option value="-1">Tutte le famiglie</option></select>
         <input id="fx-search" placeholder="Cerca effetto…" />

@@ -37,6 +37,10 @@ button.wide { width: 100%; margin-top: 10px; font-size: 15px; }
 #audio-src { width: 100%; }
 button.danger { border-color: rgba(255,120,120,.5); color: #ffb3b3; background: rgba(255,80,80,.10); }
 #auto-vj.vj-on { background: #2e7d32; border-color: #4caf50; color: #fff; }
+.av-fams { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.av-fams.hidden { display: none; }
+.av-fam { font-size: 11px; padding: 6px 10px; border-radius: 9px; opacity: .7; }
+.av-fam.on { border-color: #4caf50; background: rgba(76,175,80,.18); color: #d9ffd9; opacity: 1; }
 button.danger.armed { background: #c0392b; color: #fff; border-color: #c0392b; animation: pulse 1s infinite; }
 @keyframes pulse { 50% { filter: brightness(1.35); } }
 input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; padding: 0; height: 34px; border: none; }

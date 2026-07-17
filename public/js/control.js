@@ -22,13 +22,42 @@ let curEffect = EFFECTS.list[0];
 function applyEffect(e) { curEffect = e; send({ type: 'effect', effect: e }); $('#now').textContent = e.name; renderFx(); }
 
 // Auto VJ: the output-side director picks presets in time with the music.
+// avMode: 'smart' = curated mood pools, 'all' = every family, 'custom' = the
+// user's chip selection. Persisted on the device via saveState.
 let autoVjOn = false;
-$('#auto-vj').addEventListener('click', () => send({ type: 'autoVj', on: !autoVjOn }));
+let avCfg = { mode: 'smart', families: [] };
+function avSend(on) { send({ type: 'autoVj', on, mode: avCfg.mode, families: avCfg.families }); }
+function avSave() { djv.saveState('autovj', avCfg); if (autoVjOn) avSend(true); }
+function renderAvFams() {
+  const box = $('#av-fams');
+  box.classList.toggle('hidden', avCfg.mode !== 'custom');
+  if (avCfg.mode !== 'custom') return;
+  box.innerHTML = '';
+  EFFECTS.families.forEach((name) => {
+    const b = document.createElement('button');
+    b.className = 'av-fam' + (avCfg.families.includes(name) ? ' on' : '');
+    b.textContent = name;
+    b.addEventListener('click', () => {
+      avCfg.families = avCfg.families.includes(name)
+        ? avCfg.families.filter((f) => f !== name)
+        : avCfg.families.concat(name);
+      b.classList.toggle('on');
+      avSave();
+    });
+    box.appendChild(b);
+  });
+}
+$('#av-mode').addEventListener('change', (e) => { avCfg.mode = e.target.value; renderAvFams(); avSave(); });
+djv.loadState('autovj').then((s) => {
+  if (s && s.mode) avCfg = { mode: s.mode, families: s.families || [] };
+  $('#av-mode').value = avCfg.mode; renderAvFams();
+});
+$('#auto-vj').addEventListener('click', () => avSend(!autoVjOn));
 function setAutoVj(m) {
   autoVjOn = !!m.on;
   const b = $('#auto-vj');
   b.classList.toggle('vj-on', autoVjOn);
-  b.textContent = autoVjOn ? '🤖 Auto VJ ● attivo' : '🤖 Auto VJ';
+  b.textContent = autoVjOn ? '🤖 Auto VJ ●' : '🤖 Auto VJ';
   if (autoVjOn && m.name) $('#now').textContent = m.name + (m.bpm ? ' · ' + m.bpm + ' BPM' : '');
 }
 function renderFx() {
