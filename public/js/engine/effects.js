@@ -40,7 +40,17 @@ const FAMILIES = [
   { name: 'Fluido Fuoco', scale: 1.0, fluid: true, fluidMode: 'fire' },
   { name: 'Fluido Anello', scale: 1.0, fluid: true, fluidMode: 'ring' },
   { name: 'Fluido Vortici', scale: 1.0, fluid: true, fluidMode: 'vortex' },
-  { name: 'Fluido Onda', scale: 1.0, fluid: true, fluidMode: 'wave' }
+  { name: 'Fluido Onda', scale: 1.0, fluid: true, fluidMode: 'wave' },
+  // Scenic RGB families (uber-shader indices 34+, fieldRGB path): full-colour
+  // scenes tinted by the palette. Append-only: existing preset indices are
+  // stored in saved scenes/pads and must not shift.
+  { name: 'Cielo', scale: 1.0 },
+  { name: 'Aurora', scale: 1.0 },
+  { name: 'Mare', scale: 1.0 },
+  { name: 'Montagne', scale: 1.0 },
+  { name: 'Galassia', scale: 1.0 },
+  { name: 'Solidi 3D', scale: 1.0 },
+  { name: 'Griglia Neon', scale: 1.0 }
 ];
 
 // Palettes: low colour (a) -> high colour (b), plus optional hue-cycle/sat.

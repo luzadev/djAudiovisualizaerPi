@@ -341,6 +341,168 @@ float famTreble(vec2 uv) {
   return sparkle * (0.2 + 2.2 * t) * smoothstep(1.1, 0.1, r);
 }
 
+// ---- Scenic RGB families (return full colour; the palette tints the scene,
+// hue/sat/contrast still apply in colorizeRGB). Indices 34+ in the catalog.
+float stars(vec2 uv, float n, float th) {
+  vec2 g = floor(uv * n);
+  float h = hash(g);
+  float tw = 0.5 + 0.5 * sin(uT * 3.0 + h * 6.283 + uTreble * aMix * 5.0);
+  vec2 o = vec2(hash(g + 1.3), hash(g + 2.7)) * 0.6 + 0.2; // star position in cell
+  float dot_ = smoothstep(0.12, 0.02, length(fract(uv * n) - o));
+  return step(th, h) * tw * dot_;
+}
+float glow(vec2 p, float k) { return exp(-dot(p, p) * k); }
+
+vec3 scCielo(vec2 uv) {
+  // sky gradient: colorB at the horizon -> colorA at the zenith
+  vec3 sky = mix(uColorB, uColorA, clamp(uv.y * 0.9 + 0.45, 0.0, 1.0));
+  vec2 sp = vec2(0.42, 0.24 + 0.04 * sin(uT * 0.05));
+  sky += vec3(1.0, 0.9, 0.7) * glow(uv - sp, 55.0) * (1.1 + 0.6 * uBass * aMix);
+  float c1 = fbm(uv * vec2(2.0, 4.5) + vec2(uT * 0.05, 0.0));
+  float c2 = fbm(uv * vec2(3.5, 7.5) + vec2(uT * 0.11, 3.0));
+  float cl = smoothstep(0.42, 0.75, c1 * 0.6 + c2 * 0.5 + uMid * 0.12 * aMix);
+  vec3 cloud = mix(sky, vec3(1.0), 0.75);
+  return mix(sky, cloud, cl * 0.85);
+}
+
+vec3 scAurora(vec2 uv) {
+  vec3 col = mix(uColorA * 0.22, vec3(0.0, 0.0, 0.03), clamp(uv.y + 0.55, 0.0, 1.0));
+  col += vec3(stars(uv, 26.0, 0.985)) * 0.8;
+  for (int i = 0; i < 3; i++) {
+    float fi = float(i);
+    float yb = -0.08 + fi * 0.30 + 0.10 * fbm(vec2(uv.x * 1.5 + fi * 3.0, uT * 0.1));
+    float band = exp(-pow((uv.y - yb) * (18.0 - 5.0 * uBass * aMix), 2.0));
+    float sway = fbm(vec2(uv.x * 2.5 - uT * (0.15 + 0.05 * fi), fi * 7.0));
+    col += mix(uColorB, uColorA, sway) * band * (0.25 + 1.1 * sway) * (0.55 + 1.1 * uBass * aMix);
+  }
+  return col;
+}
+
+vec3 scMare(vec2 uv) {
+  float hor = 0.08;
+  vec2 sp = vec2(0.0, hor + 0.16);
+  if (uv.y > hor) {
+    vec3 sky = mix(uColorB, uColorA * 0.55 + 0.12, clamp((uv.y - hor) * 1.8, 0.0, 1.0));
+    sky += vec3(1.0, 0.85, 0.6) * glow(uv - sp, 40.0) * (0.9 + 0.5 * uBass * aMix);
+    return sky;
+  }
+  float d = hor - uv.y;
+  float z = 1.0 / (d * 3.0 + 0.07);           // fake perspective depth
+  vec2 wuv = vec2(uv.x * z, z * 0.8 + uT * (0.35 + 0.45 * uBass * aMix));
+  float w = fbm(wuv * 2.0);
+  vec3 sea = mix(uColorA * 0.45, uColorB, w * 0.6 + 0.12);
+  float crest = smoothstep(0.55, 0.85, w + 0.22 * uBass * aMix);
+  sea += vec3(1.0, 0.96, 0.88) * crest * 0.5 * smoothstep(0.0, 0.35, d);
+  // sun glitter lane
+  sea += vec3(1.0, 0.9, 0.7) * stars(wuv, 12.0, 0.93) * smoothstep(0.28, 0.0, abs(uv.x)) * (0.35 + uTreble * aMix);
+  return sea;
+}
+
+vec3 scMontagne(vec2 uv) {
+  vec3 col = mix(uColorB, uColorA, clamp(uv.y * 1.4 + 0.35, 0.0, 1.0));
+  col += vec3(1.0, 0.8, 0.55) * glow(uv - vec2(0.2, 0.12), 26.0) * 0.8;
+  for (int i = 0; i < 4; i++) {
+    float fi = float(i);
+    float x = uv.x * (0.8 + fi * 0.5) + uT * (0.015 + 0.045 * fi) * (1.0 + 1.5 * uMid * aMix) + fi * 13.7;
+    float ridge = 0.05 - fi * 0.16 + fbm(vec2(x, fi * 4.2)) * (0.42 - fi * 0.06);
+    float m = smoothstep(0.005, -0.005, uv.y - ridge);
+    vec3 mcol = mix(uColorA * (0.55 - fi * 0.12), vec3(0.015), fi / 4.0);
+    col = mix(col, mcol, m);
+  }
+  return col;
+}
+
+vec3 scGalassia(vec2 uv) {
+  vec2 p = uv * 1.3;
+  float r = length(p), a = atan(p.y, p.x);
+  float arm = sin(a * 2.0 + log(r + 0.05) * 5.0 - uT * 0.3) * 0.5 + 0.5;
+  float neb = fbm(p * 3.0 + arm * 1.5) * arm * exp(-r * 1.7);
+  vec3 col = mix(uColorA, uColorB, clamp(neb * 2.2, 0.0, 1.0)) * neb * (2.2 + 1.5 * uBass * aMix);
+  col += vec3(1.0, 0.95, 0.85) * glow(p, 16.0) * (1.0 + 0.8 * uBeat * aMix);
+  col += vec3(stars(uv, 34.0, 0.988)) * (0.45 + 0.5 * uTreble * aMix);
+  return col;
+}
+
+// Raymarched morphing solid (box <-> octahedron <-> sphere), palette-lit.
+float sdSolid(vec3 p) {
+  p.xz *= rot(uT * 0.5); p.xy *= rot(uT * 0.32);
+  float m = 0.5 + 0.5 * sin(uT * 0.4);
+  float pump = 1.0 + 0.18 * uBeat * aMix + 0.1 * uBass * aMix;
+  vec3 q = abs(p);
+  float box = max(q.x, max(q.y, q.z)) - 0.62 * pump;
+  float oct = (q.x + q.y + q.z - 0.95 * pump) * 0.577;
+  float sph = length(p) - 0.72 * pump;
+  return mix(mix(box, oct, m), sph, 0.5 + 0.5 * sin(uT * 0.23 + 2.0));
+}
+vec3 scSolidi(vec2 uv) {
+  vec3 ro = vec3(0.0, 0.0, -4.2), rd = normalize(vec3(uv, 1.5));
+  float t = 0.0; float hit = -1.0;
+  for (int i = 0; i < 48; i++) {
+    float d = sdSolid(ro + rd * t);
+    if (d < 0.002) { hit = t; break; }
+    t += d; if (t > 8.0) break;
+  }
+  vec3 col = mix(uColorA * 0.16, vec3(0.01), clamp(uv.y + 0.5, 0.0, 1.0));  // dark backdrop
+  col += vec3(stars(uv, 30.0, 0.99)) * 0.3;
+  if (hit > 0.0) {
+    vec3 p = ro + rd * hit;
+    vec2 h = vec2(0.004, 0.0);
+    vec3 n = normalize(vec3(sdSolid(p + h.xyy) - sdSolid(p - h.xyy),
+                            sdSolid(p + h.yxy) - sdSolid(p - h.yxy),
+                            sdSolid(p + h.yyx) - sdSolid(p - h.yyx)));
+    float li = clamp(dot(n, normalize(vec3(0.6, 0.7, -0.5))), 0.0, 1.0);
+    float rim = pow(1.0 - clamp(dot(n, -rd), 0.0, 1.0), 2.5);
+    col = mix(uColorA, uColorB, 0.5 + 0.5 * n.y) * (0.25 + 0.85 * li) + uColorB * rim * (0.7 + 0.8 * uBeat * aMix);
+  }
+  return col;
+}
+
+vec3 scGriglia(vec2 uv) {
+  float hor = 0.02;
+  vec3 col;
+  if (uv.y > hor) {
+    col = mix(uColorA * 0.2, vec3(0.005), clamp((uv.y - hor) * 1.6, 0.0, 1.0));
+    col += vec3(stars(uv, 28.0, 0.985)) * 0.5;
+    // striped retro sun
+    vec2 sp = vec2(0.0, hor + 0.24);
+    float sd = length(uv - sp);
+    float disc = smoothstep(0.20, 0.19, sd);
+    float stripe = step(0.35, fract(uv.y * 34.0 + uT * 0.5));
+    col = mix(col, mix(uColorB, uColorA, clamp((uv.y - hor) * 3.0, 0.0, 1.0)), disc * max(stripe, step(uv.y, sp.y)));
+    col += uColorB * glow(uv - sp, 22.0) * 0.35;
+  } else {
+    float d = hor - uv.y;
+    float z = 1.0 / (d * 4.0 + 0.06);
+    vec2 g = vec2(uv.x * z * 1.6, z * 1.2 + uT * (1.1 + 1.6 * uBass * aMix));
+    vec2 fg = abs(fract(g) - 0.5);
+    float line = smoothstep(0.46, 0.5, max(fg.x, fg.y));
+    col = uColorA * 0.10 + uColorB * line * (0.7 + 0.9 * uBass * aMix) * smoothstep(0.0, 0.12, d);
+  }
+  return col;
+}
+
+vec3 fieldRGB(int f, vec2 uv) {
+  if (f == 34) return scCielo(uv);
+  if (f == 35) return scAurora(uv);
+  if (f == 36) return scMare(uv);
+  if (f == 37) return scMontagne(uv);
+  if (f == 38) return scGalassia(uv);
+  if (f == 39) return scSolidi(uv);
+  return scGriglia(uv); // f == 40
+}
+
+vec3 colorizeRGB(vec3 c, vec2 uv0) {
+  vec3 hsv = rgb2hsv(clamp(c, 0.0, 4.0));
+  hsv.x = fract(hsv.x + uHueBase + uHueCycle * uT * 0.4);
+  hsv.y = clamp(hsv.y * uSat, 0.0, 1.0);
+  vec3 col = hsv2rgb(hsv);
+  col *= 0.8 + 0.35 * uLevel * aMix + 0.3 * uBeat * aMix;   // pulse with loudness
+  col = pow(max(col, 0.0), vec3(0.55 + 0.55 * uContrast));
+  if (uInvert > 0.5) col = vec3(1.0) - col;
+  col *= 1.0 - 0.22 * dot(uv0, uv0);
+  return col;
+}
+
 float field(int f, vec2 uv) {
   if (f == 0) return famJulia(uv);
   if (f == 1) return famMandel(uv);
@@ -394,7 +556,9 @@ void main() {
   aMix = uAudioMix;
   vec2 uv0 = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
   vec2 uv = rot(uRot + uRotSpeed * uT) * uv0;
-  uv /= (uScale * (1.0 + uBass * 0.8 * aMix));
+  // Scenic families get a gentler bass-zoom so the horizon doesn't pump wildly.
+  float zoomAmt = uFamily >= 34 ? 0.18 : 0.8;
+  uv /= (uScale * (1.0 + uBass * zoomAmt * aMix));
 
   if (uSym > 0.5) {
     float a = atan(uv.y, uv.x), r = length(uv);
@@ -406,6 +570,10 @@ void main() {
     uv += uWarp * vec2(fbm(uv * 2.0 + uT * 0.1), fbm(uv * 2.0 - uT * 0.1 + 3.3));
   }
 
+  if (uFamily >= 34) {
+    fragColor = vec4(colorizeRGB(fieldRGB(uFamily, uv), uv0), 1.0);
+    return;
+  }
   float v = field(uFamily, uv);
   fragColor = vec4(colorize(v, uv0), 1.0);
 }
