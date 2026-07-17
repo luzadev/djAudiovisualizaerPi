@@ -18,9 +18,18 @@ class FluidSim {
     // but functional) if unavailable.
     this.float = !!gl.getExtension('EXT_color_buffer_float');
 
-    this.SIM_RES = 192;   // velocity/pressure grid
-    this.DYE_RES = 1024;  // dye (what you actually see)
-    this.PRESSURE_ITERS = 22;
+    // Adaptive quality: start at max and step down if the GPU can't hold
+    // ~45fps (e.g. Raspberry Pi V3D). Never steps back up (no oscillation).
+    this.QUALITY = [
+      { sim: 192, dye: 1024, iters: 22 },
+      { sim: 144, dye: 768, iters: 18 },
+      { sim: 112, dye: 512, iters: 14 },
+    ];
+    this.qLevel = 0;
+    this.SIM_RES = this.QUALITY[0].sim;
+    this.DYE_RES = this.QUALITY[0].dye;
+    this.PRESSURE_ITERS = this.QUALITY[0].iters;
+    this._perfSum = 0; this._perfN = 0;
 
     this._buildPrograms();
 
@@ -159,6 +168,18 @@ class FluidSim {
 
     let dtReal = this.lastTime ? (timeSec - this.lastTime) : 1 / 60;
     this.lastTime = timeSec;
+    // Adaptive quality: if the average frame time stays above ~22ms, step the
+    // resolution down one notch and reallocate.
+    if (dtReal > 0 && dtReal < 0.5) { this._perfSum += dtReal; this._perfN++; }
+    if (this._perfN >= 90) {
+      const avg = this._perfSum / this._perfN;
+      this._perfSum = 0; this._perfN = 0;
+      if (avg > 0.022 && this.qLevel < this.QUALITY.length - 1) {
+        const q = this.QUALITY[++this.qLevel];
+        this.SIM_RES = q.sim; this.DYE_RES = q.dye; this.PRESSURE_ITERS = q.iters;
+        this.simW = 0; // force _allocate to rebuild the framebuffers
+      }
+    }
     dtReal = Math.min(Math.max(dtReal, 0), 1 / 30);
     const dt = dtReal * (e.speed || 1); // sim speed scales motion, not brightness
     const t = timeSec * (e.speed || 1);
