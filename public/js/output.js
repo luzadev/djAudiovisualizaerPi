@@ -69,7 +69,7 @@ let recorder = null, recording = false, pendingRecOpts = null, recAutoStop = nul
 let recCanvas = null, recCtx = null, composeRAF = null;
 
 function pickMime() {
-  const cands = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const cands = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm'];
   for (const m of cands) if (window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
   return 'video/webm';
 }
@@ -164,14 +164,15 @@ async function startRecording(opts) {
   try {
     await djv.recStart();
     recCanvas = document.createElement('canvas');
-    recCanvas.width = canvas.width;
-    recCanvas.height = canvas.height;
+    const recScale = Math.min(1, 1280 / canvas.width);
+    recCanvas.width = Math.round(canvas.width * recScale);
+    recCanvas.height = Math.round(canvas.height * recScale);
     recCtx = recCanvas.getContext('2d');
     composeFrame();
     const vstream = recCanvas.captureStream(30);
     const astream = audio.recordDest.stream;
     const stream = new MediaStream([...vstream.getVideoTracks(), ...astream.getAudioTracks()]);
-    recorder = new MediaRecorder(stream, { mimeType: pickMime(), videoBitsPerSecond: 12e6 });
+    recorder = new MediaRecorder(stream, { mimeType: pickMime(), videoBitsPerSecond: 8e6 });
     // Serialise chunk delivery: ondataavailable is async, so without a chain the
     // header chunk could be sent after a later one and corrupt the WebM.
     let chain = Promise.resolve();
