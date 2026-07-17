@@ -314,7 +314,16 @@ async function reportDevices() {
 // ---------------------------------------------------------------- command bus
 djv.onControl(async (m) => {
   switch (m.type) {
-    case 'effect': viz.setEffect(m.effect); break;
+    case 'effect':
+      // A manual pick takes over from the Auto VJ.
+      if (autoVj) { autoVj = false; djv.report({ type: 'autoVj', on: false }); }
+      viz.setEffect(m.effect);
+      break;
+    case 'autoVj':
+      autoVj = !!m.on;
+      if (autoVj) { avLastSwitch = 0; avBeatMark = audio.beatCount || 0; }
+      djv.report({ type: 'autoVj', on: autoVj });
+      break;
     case 'svg': loadCustomTexture(m.dataUrl); break;
     case 'recStart': startRecording(); break;
     case 'recStop': stopRecording(m); break;
@@ -477,10 +486,43 @@ djv.onControl(async (m) => {
 const startTime = performance.now();
 let frames = 0, fpsT = performance.now(), fps = 0, lastReport = 0, prevBeat = 0, lastProgress = 0;
 
+// ---- Auto VJ: a director that adapts the visuals to the playing track ------
+// Uses the engine's musical features (mood/bpm/drop/beatCount): switches preset
+// every 16 beats (or ~14s without beats), immediately on a detected drop, and
+// draws from pools of families that fit the current mood.
+let autoVj = false, avLastSwitch = 0, avBeatMark = 0, avRecent = [];
+const AV_POOLS = {
+  quiet: ['Cielo', 'Aurora', 'Mare', 'Montagne', 'Galassia', 'Nuvole', 'Fluido', 'Onde'],
+  groove: ['Plasma', 'Vortice', 'Truchet', 'Esagoni', 'Spirale', 'Cellule', 'Gyroide',
+    'Fluido', 'Fluido Onda', 'Fluido Vortici', 'Griglia Neon', 'Solidi 3D'],
+  peak: ['Julia', 'Iperspazio', 'Tunnel', 'Moiré', 'Fluido Anello', 'Fluido Fuoco',
+    'Vortice', 'Griglia Neon', 'Cristalli']
+};
+function avPick(mood) {
+  const fams = AV_POOLS[mood] || AV_POOLS.groove;
+  const cands = window.EFFECTS.list.filter(e => fams.indexOf(e.familyName) >= 0 &&
+    (mood === 'peak' ? e.speed >= 1.0 : e.speed <= 1.4) && avRecent.indexOf(e.name) < 0);
+  const e = cands.length ? cands[Math.floor(Math.random() * cands.length)] : window.EFFECTS.list[0];
+  avRecent = [e.name].concat(avRecent).slice(0, 6); // don't repeat the last few
+  return e;
+}
+function avTick(now) {
+  if (!autoVj) return;
+  const dropNow = audio.drop === 1;
+  const due = (audio.beatCount - avBeatMark) >= 16 || (now - avLastSwitch) > 14000;
+  if (!due && !dropNow) return;
+  avBeatMark = audio.beatCount; avLastSwitch = now;
+  const mood = dropNow ? 'peak' : audio.mood;
+  const e = avPick(mood);
+  viz.setEffect(e);
+  djv.report({ type: 'autoVj', on: true, name: e.name, mood, bpm: audio.bpm || 0 });
+}
+
 function frame() {
   const t = (performance.now() - startTime) / 1000;
   audio.update();
   const a = audio.values;
+  avTick(performance.now());
   viz.render(t * speed, a);
 
   // Report beat rising-edges so the control window can auto-cycle effects.

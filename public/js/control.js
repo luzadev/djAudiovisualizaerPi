@@ -20,6 +20,17 @@ const famSel = $('#fx-fam');
 EFFECTS.families.forEach((n, i) => { const o = document.createElement('option'); o.value = i; o.textContent = n; famSel.appendChild(o); });
 let curEffect = EFFECTS.list[0];
 function applyEffect(e) { curEffect = e; send({ type: 'effect', effect: e }); $('#now').textContent = e.name; renderFx(); }
+
+// Auto VJ: the output-side director picks presets in time with the music.
+let autoVjOn = false;
+$('#auto-vj').addEventListener('click', () => send({ type: 'autoVj', on: !autoVjOn }));
+function setAutoVj(m) {
+  autoVjOn = !!m.on;
+  const b = $('#auto-vj');
+  b.classList.toggle('vj-on', autoVjOn);
+  b.textContent = autoVjOn ? '🤖 Auto VJ ● attivo' : '🤖 Auto VJ';
+  if (autoVjOn && m.name) $('#now').textContent = m.name + (m.bpm ? ' · ' + m.bpm + ' BPM' : '');
+}
 function renderFx() {
   const fam = parseInt(famSel.value, 10);
   const q = $('#fx-search').value.trim().toLowerCase();
@@ -619,6 +630,7 @@ djv.onReport((m) => {
     case 'meters':
       setMeter('m-bass', m.bass); setMeter('m-mid', m.mid); setMeter('m-treble', m.treble);
       break;
+    case 'autoVj': setAutoVj(m); break;
     case 'devices': inputDevices = m.list || []; renderAudioSrc(); break;
     case 'recState': recOn = m.recording; updateRec(); break;
     case 'recSaved': $('#rec-status').textContent = '✅ Salvato: ' + m.path; break;

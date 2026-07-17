@@ -51,6 +51,17 @@ class AudioEngine {
     this._bassAvg = 0;        // running average for beat detection
     this._beatCooldown = 0;
 
+    // Musical features for the Auto VJ director.
+    this.energyFast = 0;      // ~0.2s EMA of level
+    this.energySlow = 0;      // ~4s EMA of level (the track's section energy)
+    this.bpm = 0;             // median of recent beat intervals
+    this.beatCount = 0;       // total beats seen (for phrase-synced switching)
+    this.mood = 'groove';     // 'quiet' | 'groove' | 'peak' (with hysteresis)
+    this.drop = 0;            // 1 for one frame when a drop is detected
+    this._beatIvs = [];
+    this._lastBeatT = 0;
+    this._dropCool = 0;
+
     // Log-spaced spectrum for VU/bar visualisers.
     this.NB = 32;
     this.spectrum = new Float32Array(this.NB);
@@ -270,9 +281,40 @@ class AudioEngine {
     if (b > this._bassAvg * 1.35 && b > 0.12 && this._beatCooldown <= 0) {
       this.beat = 1.0;
       this._beatCooldown = 8; // ~min frames between beats
+      // BPM: median of the recent beat-to-beat intervals (0.24-2s plausible).
+      const now = performance.now();
+      if (this._lastBeatT) {
+        const iv = (now - this._lastBeatT) / 1000;
+        if (iv > 0.24 && iv < 2.0) {
+          this._beatIvs = this._beatIvs.slice(-15);
+          this._beatIvs.push(iv);
+          const s = this._beatIvs.slice().sort((a, b2) => a - b2);
+          this.bpm = Math.round(60 / s[s.length >> 1]);
+        }
+      }
+      this._lastBeatT = now;
+      this.beatCount++;
     } else {
       this.beat *= 0.86; // decay
     }
+
+    // Musical mood for the Auto VJ: slow energy places the section, a sudden
+    // fast/slow divergence right after a lull reads as a drop.
+    this.energyFast = this.energyFast * 0.92 + this.level * 0.08;
+    this.energySlow = this.energySlow * 0.995 + this.level * 0.005;
+    this.drop = 0;
+    this._dropCool--;
+    if (this.energyFast > this.energySlow * 1.6 && this.energyFast > 0.35 &&
+        this.energySlow > 0.04 && this._dropCool <= 0) {
+      this.drop = 1;
+      this._dropCool = 360; // at most one drop flag every ~6s
+    }
+    let mood = this.mood;
+    if (this.energySlow < 0.12) mood = 'quiet';
+    else if (this.energySlow > 0.38 || this.drop) mood = 'peak';
+    else if (mood === 'quiet' && this.energySlow > 0.16) mood = 'groove';
+    else if (mood === 'peak' && this.energySlow < 0.32) mood = 'groove';
+    this.mood = mood;
 
     // Log-spaced spectrum bands (for VU-meter style effects).
     const NB = this.NB;
