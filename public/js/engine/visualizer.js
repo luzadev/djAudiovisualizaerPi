@@ -94,6 +94,11 @@ class Visualizer {
 
   render(timeSec, audio) {
     const gl = this.gl, u = this.u, e = this.effect;
+    if (e.isFluid && window.FluidSim) {
+      if (!this.fluid) this.fluid = new window.FluidSim(gl);
+      this.fluid.render(timeSec, audio, e, this.canvas);
+      return;
+    }
     gl.useProgram(this.program);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.enableVertexAttribArray(this.aPos);

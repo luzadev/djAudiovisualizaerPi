@@ -33,7 +33,8 @@ const FAMILIES = [
   { name: 'Tri-Banda', scale: 1.0, bgDark: true },
   { name: 'Reattivo Bassi', scale: 1.0, bgDark: true },
   { name: 'Reattivo Medi', scale: 1.0, bgDark: true },
-  { name: 'Reattivo Alti', scale: 1.0, bgDark: true }
+  { name: 'Reattivo Alti', scale: 1.0, bgDark: true },
+  { name: 'Fluido', scale: 1.0, fluid: true }  // GPU fluid sim (fluid.js), not the uber-shader
 ];
 
 // Palettes: low colour (a) -> high colour (b), plus optional hue-cycle/sat.
@@ -88,7 +89,10 @@ function makeEffect(fi, pi, vi) {
     speed: v.speed,
     colorA: pal.a,
     colorB: pal.b,
-    bgDark: fam.bgDark ? 1 : 0
+    bgDark: fam.bgDark ? 1 : 0,
+    // Always present (0/1) so Object.assign merges in setEffect can't leave a
+    // stale flag behind when switching between fluid and shader presets.
+    isFluid: fam.fluid ? 1 : 0
   };
 }
 
