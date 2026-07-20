@@ -481,6 +481,70 @@ vec3 scGriglia(vec2 uv) {
   return col;
 }
 
+// Fly-through square tunnel: receding neon frames (colorB) inside a scaffold
+// of light-streaked walls (colorA), rolling camera, punch on the beat.
+vec3 scTunnelNeon(vec2 uv) {
+  vec2 p = rot(uT * 0.12 + 0.25 * sin(uT * 0.21)) * uv;   // camera roll
+  float r = max(abs(p.x), abs(p.y)) + 0.001;              // square tunnel radius
+  float z = 0.32 / r + uT * (1.1 + 1.8 * uBass * aMix);   // depth along the tunnel
+  float att = clamp(r * 3.2, 0.0, 1.0) * smoothstep(0.0, 0.045, r); // gentle far-end fade
+
+  // gold neon frames at regular depth intervals (a thin core + a wide halo),
+  // plus a finer secondary grid of thin lines between them
+  float fz = abs(fract(z) - 0.5);
+  float frame = smoothstep(0.045, 0.0, fz);
+  float halo  = smoothstep(0.38, 0.0, fz);
+  float fz2 = abs(fract(z * 3.0) - 0.5);
+  float thin = smoothstep(0.06, 0.0, fz2) * 0.35;
+  // corner rails where the walls meet
+  float corner = smoothstep(0.10, 0.0, abs(abs(p.x) - abs(p.y)) / r);
+
+  // blue-lit scaffold: streaks stretched along the direction of travel
+  float wall = (abs(p.x) > abs(p.y) ? p.y / abs(p.x) : p.x / abs(p.y)); // -1..1 across the wall
+  float streak = fbm(vec2(wall * 8.0, z * 0.35));
+  streak = smoothstep(0.35, 0.72, streak);
+  float ribs = smoothstep(0.7, 0.95, sin(wall * 24.0) * 0.5 + 0.5);     // thin cross bars
+
+  float punch = 1.0 + 0.9 * uBeat * aMix;
+  vec3 col = uColorA * (streak * (1.2 + 1.2 * uMid * aMix) + ribs * halo * 0.5) * att;
+  col += uColorB * (frame * 1.8 + thin + halo * 0.35) * punch * att;
+  col += mix(uColorB, vec3(1.0), 0.4) * corner * frame * 0.8 * att;
+  col += uColorB * glow(uv, 9.0) * 0.35 * (1.0 + uBass * aMix);         // hot core at the far end
+  return col;
+}
+
+// Erupting plasma column: domain-warped smoke body, ridged electric filaments,
+// sparks blown outward, widening into a mushroom cloud at the top.
+vec3 scTempesta(vec2 uv) {
+  vec2 p = uv;
+  float rise = uT * (0.45 + 0.8 * uBass * aMix);
+  // wobbling centreline and a width that flares at the top and near the ground
+  float cx = 0.16 * (fbm(vec2(p.y * 1.6, uT * 0.18)) - 0.5);
+  float w = 0.20 + 0.12 * fbm(vec2(p.y * 2.2 - rise, 7.0))
+          + 0.35 * smoothstep(0.30, 0.90, p.y)          // mushroom head
+          + 0.20 * smoothstep(-0.35, -0.80, p.y);       // ground splash
+  float body = exp(-pow((p.x - cx) / w, 2.0) * 4.0);
+
+  // turbulent plasma: warped fbm, ridged for fine bright filaments
+  vec2 q = p * 3.4 + vec2(0.0, -rise * 2.4);
+  float n = fbm(q + 2.2 * vec2(fbm(q + vec2(0.0, rise)), fbm(q + 5.2)));
+  float fil = pow(1.0 - abs(2.0 * n - 1.0), 9.0);
+  float smoke = smoothstep(0.42, 0.85, n) * (0.4 + 0.6 * n);
+
+  vec3 col = uColorA * smoke * body * (0.9 + 0.6 * uMid * aMix);
+  col += mix(uColorB, vec3(1.0), 0.25) * fil * body
+       * (0.8 + 1.3 * uBass * aMix + 1.0 * uBeat * aMix);
+  // persistent hot core so the column never fades out between noise pockets
+  float core = exp(-pow((p.x - cx) / (w * 0.45), 2.0) * 3.0);
+  col += mix(uColorA, uColorB, 0.5 + 0.5 * n) * core * (0.30 + 0.55 * n)
+       * (0.7 + 0.9 * uBass * aMix);
+  // sparks streaming outward (cells drift up and away from the column)
+  vec2 sp = vec2(p.x * (1.3 + 0.6 * p.y) - sign(p.x) * rise * 0.25, p.y - rise * 0.8);
+  col += mix(uColorB, vec3(1.0, 0.92, 0.96), 0.5) * stars(sp, 26.0, 0.86)
+       * (0.7 + 1.6 * uTreble * aMix) * smoothstep(1.25, 0.15, abs(p.x)) * (0.3 + body);
+  return col;
+}
+
 vec3 fieldRGB(int f, vec2 uv) {
   if (f == 34) return scCielo(uv);
   if (f == 35) return scAurora(uv);
@@ -488,7 +552,9 @@ vec3 fieldRGB(int f, vec2 uv) {
   if (f == 37) return scMontagne(uv);
   if (f == 38) return scGalassia(uv);
   if (f == 39) return scSolidi(uv);
-  return scGriglia(uv); // f == 40
+  if (f == 40) return scGriglia(uv);
+  if (f == 41) return scTunnelNeon(uv);
+  return scTempesta(uv); // f == 42
 }
 
 vec3 colorizeRGB(vec3 c, vec2 uv0) {

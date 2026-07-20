@@ -503,9 +503,9 @@ let autoVj = false, avLastSwitch = 0, avBeatMark = 0, avRecent = [];
 const AV_POOLS = {
   quiet: ['Cielo', 'Aurora', 'Mare', 'Montagne', 'Galassia', 'Nuvole', 'Fluido', 'Onde'],
   groove: ['Plasma', 'Vortice', 'Truchet', 'Esagoni', 'Spirale', 'Cellule', 'Gyroide',
-    'Fluido', 'Fluido Onda', 'Fluido Vortici', 'Griglia Neon', 'Solidi 3D'],
+    'Fluido', 'Fluido Onda', 'Fluido Vortici', 'Griglia Neon', 'Solidi 3D', 'Tunnel Neon'],
   peak: ['Julia', 'Iperspazio', 'Tunnel', 'Moiré', 'Fluido Anello', 'Fluido Fuoco',
-    'Vortice', 'Griglia Neon', 'Cristalli']
+    'Vortice', 'Griglia Neon', 'Cristalli', 'Tunnel Neon', 'Tempesta Plasma']
 };
 let avMode = 'smart', avFamilies = []; // 'smart' | 'all' | 'custom'
 function avPick(mood) {

@@ -50,7 +50,9 @@ const FAMILIES = [
   { name: 'Montagne', scale: 1.0 },
   { name: 'Galassia', scale: 1.0 },
   { name: 'Solidi 3D', scale: 1.0 },
-  { name: 'Griglia Neon', scale: 1.0 }
+  { name: 'Griglia Neon', scale: 1.0 },
+  { name: 'Tunnel Neon', scale: 1.0 },
+  { name: 'Tempesta Plasma', scale: 1.0 }
 ];
 
 // Palettes: low colour (a) -> high colour (b), plus optional hue-cycle/sat.
