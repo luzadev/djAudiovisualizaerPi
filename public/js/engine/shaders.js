@@ -545,6 +545,52 @@ vec3 scTempesta(vec2 uv) {
   return col;
 }
 
+// Cosmic burst: bright core, organic electric tendrils (ridged fbm in polar
+// space) and a radial stream of particle streaks over a nebula haze.
+vec3 scSupernova(vec2 uv) {
+  float r = length(uv) + 1e-4;
+  // slow frame rotation hides the polar seam / mirror axis
+  float a = atan(uv.y, uv.x) + uT * 0.05;
+  float aM = abs(mod(a, 6.2831853) - 3.14159265); // mirrored, seam-free angle
+  vec3 col = vec3(0.0);
+
+  // nebula haze
+  float haze = fbm(uv * 2.0 + vec2(uT * 0.03, 0.0));
+  col += mix(uColorA, uColorB, haze) * haze * 0.3 * smoothstep(1.4, 0.15, r);
+
+  // electric tendrils: ridged fbm flowing outward; brightness pumps with bass
+  vec2 pp = vec2(aM * 2.3, pow(r, 0.65) * 6.0 - uT * (0.55 + 0.9 * uBass * aMix));
+  float n1 = fbm(pp);
+  float ridge = abs(n1 - 0.5) * 2.0;
+  float fil = pow(1.0 - clamp(ridge * 2.4, 0.0, 1.0), 6.0);
+  fil *= smoothstep(1.25, 0.12, r) * smoothstep(0.015, 0.12, r);
+  // iridescence: alternate the palette colours along the filament
+  vec3 filCol = mix(uColorB, uColorA, fract(n1 * 3.0));
+  filCol = mix(filCol, vec3(1.0), fil * 0.18); // slightly hot filament cores
+  col += filCol * fil * (0.75 + 1.2 * uBass * aMix);
+
+  // radial particle streaks (warp-burst): polar cells drifting outward
+  for (int L = 0; L < 2; L++) {
+    float fl = float(L);
+    vec2 sp = vec2(aM * (16.0 + fl * 9.0),
+                   log(r) * (5.0 + fl * 2.0) - uT * (1.1 + fl * 0.7 + 2.0 * uBass * aMix));
+    vec2 g = floor(sp), f2 = fract(sp);
+    float h = hash(g + fl * 17.0);
+    vec2 o = vec2(hash(g + 1.7), hash(g + 3.1)) * 0.6 + 0.2;
+    float d = length((f2 - o) * vec2(1.0, 0.55)); // slightly elongated along the radius
+    float p = smoothstep(0.11, 0.015, d) * step(0.42, h);
+    p *= 0.45 + 0.55 * sin(uT * 3.0 + h * 6.283 + uTreble * aMix * 5.0);
+    col += mix(vec3(0.75, 0.92, 1.0), uColorB, hash(g + 5.3)) * p
+         * (0.35 + 0.4 * uLevel * aMix) * smoothstep(0.03, 0.2, r);
+  }
+
+  // white-cyan core with a crackling fbm edge; punches on the beat
+  float core = exp(-r * r * 150.0);
+  col += mix(vec3(1.0), uColorB, 0.25) * core
+       * (0.9 + 0.9 * uBeat * aMix) * (0.85 + 0.5 * fbm(uv * 18.0 + uT));
+  return col;
+}
+
 vec3 fieldRGB(int f, vec2 uv) {
   if (f == 34) return scCielo(uv);
   if (f == 35) return scAurora(uv);
@@ -554,7 +600,8 @@ vec3 fieldRGB(int f, vec2 uv) {
   if (f == 39) return scSolidi(uv);
   if (f == 40) return scGriglia(uv);
   if (f == 41) return scTunnelNeon(uv);
-  return scTempesta(uv); // f == 42
+  if (f == 42) return scTempesta(uv);
+  return scSupernova(uv); // f == 43
 }
 
 vec3 colorizeRGB(vec3 c, vec2 uv0) {
